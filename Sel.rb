@@ -145,7 +145,7 @@ module Sel
 			if ent.is_a? Sketchup::Group then
 				res+=Sel.flat_map(ent.entities,&block)
 			else
-				res<<block.call(ent)
+				res<<(block.call(ent))
 			end
 		}
 		return res
