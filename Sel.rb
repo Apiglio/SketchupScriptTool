@@ -132,7 +132,7 @@ module Sel
 		res=[]
 		list.each{|ent|
 			if ent.is_a? Sketchup::Group then
-				res<<Sel.map(ent.entities,&block)
+				res<<(Sel.map(ent.entities,&block))
 			else
 				res<<block.call(ent)
 			end
