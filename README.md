@@ -33,4 +33,5 @@ in SketchUp Ruby Script
 **Trans** is for some advanced moving operation such as randon moving
 + Trans::Rand is random moving
 
-
+**Cam** is for camera action
++ only contains one module named Cam yet
