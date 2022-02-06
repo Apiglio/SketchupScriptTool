@@ -138,27 +138,8 @@ module Cge
 	end
 	
 	
-	#清除未使用的组件定义
-	def self.clear_useless_definition
-		defs=Sketchup.active_model.definitions
-		arr=defs.to_a
-		useless=[]
-		arr.each{|i|
-			#useless.push(i) if i.instances.length==0
-			defs.remove(i) if i.instances.length==0
-		}
-		#defs.remove(useless)
-	end		
-	#检测群组的独立性(稳定性测试未通过)
-	def self.check_group_definition
-		defs=Sketchup.active_model.definitions.to_a
-		defs.select(&:group?)
-		defs.each{|d|
-			instances=d.instances
-			instances.pop
-			instances.each(&:make_unique)
-		}
-	end
+	
+
 	
 	def self.get_transformation(ins)
 		tmp=ins
@@ -459,6 +440,88 @@ module Cge
 			return vecs
 		end
 		
+		
+		
+	end
+	
+	#定义冲突协调与清理
+	module Defs
+		
+		#清除未使用的组件定义
+		def self.cleaner
+			defs=Sketchup.active_model.definitions
+			useless=defs.select{|i|i.instances.empty?}
+			useless.each{|i|defs.remove(i)}.length
+		end
+		
+		#独立每一个群组
+		def self.group_uniq!
+			defs=Sketchup.active_model.definitions.to_a
+			defs.select!(&:group?)
+			acc=0
+			defs.each{|d|
+				instances=d.instances
+				instances.shift
+				acc+=instances.length
+				instances.each(&:make_unique)
+			}
+			acc
+		end
+		
+		#合并两个组件定义，并删去后一个定义
+		def self.combine(def_1,def_2)
+			unless def_1.is_a?(Sketchup::ComponentDefinition) then
+				raise ArgumentError.new("主定义不是ComponentDefinition") unless def_1.is_a?(String)
+				def_1=Sketchup.active_model.definitions[def_1]
+			end
+			unless def_2.is_a?(Sketchup::ComponentDefinition) then
+				raise ArgumentError.new("副定义不是ComponentDefinition") unless def_2.is_a?(String)
+				def_2=Sketchup.active_model.definitions[def_2]
+			end
+			list=def_2.instances
+			list.each{|i|
+				i.definition=def_1
+			}
+			Sketchup.active_model.definitions.remove(def_2)
+			nil
+		end
+		
+		#合并所有带#号的组件定义（保留不带星号的）
+		def self.restore
+			list=Sketchup.active_model.definitions.reject{|i|i.group? or i.image?}
+			list.reject!{|i|i.name.index("#").nil?}
+			list.each{|i|
+				ori_name=i.name[0,i.name.index("#")]
+				if Sketchup.active_model.definitions[ori_name].nil? then
+					puts "将组件“#{i.name}”重命名为“#{ori_name}”。"
+					i.name=ori_name
+				else
+					puts "将组件“#{i.name}”还原至组件“#{ori_name}”。"
+					self.combine(ori_name,i.name)
+				end
+			}
+			nil
+		end
+		
+		#合并所有带#号的组件定义（保留不带星号的）
+		def self.update
+			list=Sketchup.active_model.definitions.reject{|i|i.group? or i.image?}
+			list.reject!{|i|i.name.index("#").nil?}
+			list.each{|i|
+				ori_name=i.name[0,i.name.index("#")]
+				if Sketchup.active_model.definitions[ori_name].nil? then
+					puts "将组件“#{i.name}”重命名为“#{ori_name}”。"
+					i.name=ori_name
+				else
+					puts "将组件“#{i.name}”更新成组件“#{ori_name}”，名称保留。"
+					self.combine(i,ori_name)
+					i.name=ori_name
+				end
+			}
+			nil
+		end
+		
+
 		
 		
 	end
