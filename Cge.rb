@@ -623,10 +623,79 @@ module Cge
 			Sketchup.active_model.commit_operation
 		end
 		
+		def self.dynamize!(ins)
+			ins.definition.set_attribute("dynamic_attributes","_formatversion",1.0)
+			ins.definition.set_attribute("dynamic_attributes","_has_movetool_behaviors",0.0)
+			ins.definition.set_attribute("dynamic_attributes","_lastmodified",Time.now.to_s[0..-7])
+			ins.definition.set_attribute("dynamic_attributes","_lengthunits","CENTIMETERS")
+			ins.definition.set_attribute("dynamic_attributes","_name",ins.definition.name)
+			ins.set_attribute("dynamic_attributes","_has_movetool_behaviors",0.0)
+			ins.set_attribute("dynamic_attributes","_lengthunits","CENTIMETERS")
+			ins.set_attribute("dynamic_attributes","_name",ins.definition.name)
+		end
+		
+		def self.new_attrs(ins,name,other_option={})
+			dynamize!(ins) unless Cge.dc?(ins)
+			
+			label=other_option[:label]
+			access=other_option[:access]
+			formulaunits=other_option[:formulaunits]
+			options=other_option[:options]
+			units=other_option[:units]
+			value=other_option[:value]
+			
+			label=name.capitalize if label.nil?
+			access="NONE" if access.nil?
+			formulaunits="CENTIMETERS" if formulaunits.nil?
+			options="&" if options.nil?
+			units="CENTIMETERS" if units.nil?
+			
+			#_access        #|TEXTBOX|LIST|VIEW|NONE
+			#_formulaunits  #|FLOAT|STRING|INCHES|CENTIMETERS
+			#_options       #|&|&k1=1&k2=2&k3=3&
+			#_units         #|DEGREES|DEFAULT|INTEGER|FLOAT|BOOLEAN|PERCENT|INCHES|FEET|MILLIMETERS|CENTIMETERS|METER|DOLLARS|EUROS|YEN|POUNDS|KILOGRAMS
+			
+			ins.definition.set_attribute("dynamic_attributes",name,value)
+			ins.set_attribute("dynamic_attributes",name,value)
+			ins.definition.set_attribute("dynamic_attributes","_"+name+"_label",label)
+			ins.definition.set_attribute("dynamic_attributes","_"+name+"_access",access)
+			ins.definition.set_attribute("dynamic_attributes","_"+name+"_formulaunits",formulaunits)
+			ins.definition.set_attribute("dynamic_attributes","_"+name+"_options",options)
+			ins.definition.set_attribute("dynamic_attributes","_"+name+"_units",units)
+			
+		end
+		
 	end
 	
 	
 	#工具栏命令初始化
+	
+	
+	
+	class CgeHelper
+		def initialize(sender)
+			@cg=sender
+		end
+		def test
+			UI.messagebox(@cg)
+		end
+		def is_flatten?
+			@cg.definition.entities.select{|i|i.is_a?(Sketchup::Group) or i.is_a?(Sketchup::ComponentInstance)}.empty?
+		end
+	end
+	
+	[Sketchup::Group,Sketchup::ComponentInstance].each{|klass|
+		if klass.instance_methods.include?(:cge) then
+			if klass.instance_method(:cge).parameters[0][1]!=:author_apiglio then
+				UI.messagebox("Class #{klass} already has :cge method. Failed to attach.")
+				next
+			end
+		end
+		eval("class #{klass.to_s}\r\ndef cge(author_apiglio='')\r\nreturn(Cge::CgeHelper.new(self))\r\nend\r\nend")
+	}
+	
+	
+	
 	
 	
 end
