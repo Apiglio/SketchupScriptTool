@@ -4,6 +4,22 @@
 
 module Cam
 	
+	def self.vworld
+		Sketchup.active_model.active_view.zoom_extents
+	end
+	def self.vsel
+		Sketchup.active_model.active_view.zoom Sketchup.active_model.selection
+	end
+	def self.vactive
+		Sketchup.active_model.active_view.zoom Sketchup.active_model.active_entities
+	end
+	class << self
+		alias vw vworld
+		alias vs vsel
+		alias va vactive
+	end
+	
+	
 	def self.curve_vectors(curve,nparts)
 		raise ArgumentError.new("Sketchup::Curve expected but #{curve.class} found.") unless curve.is_a?(Sketchup::Curve)
 		raise ArgumentError.new("Fixnum expected but #{nparts.class} found.") unless nparts.is_a?(Fixnum)
