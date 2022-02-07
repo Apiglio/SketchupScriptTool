@@ -14,6 +14,7 @@ in SketchUp Ruby Script
 + module Cge::MoveTool is for moving instance(ComponentInstance | Group) by its axis, with a GUI
 + module Cge::Move is for other moving operation such as grouding and aligning
 + module Cge::Deform is for checking whether a instance has a "abnormal" transformation
++ module Cge::Defs is to check or clean DefinitionList
 
 
 **Sel** is for selection operation
