@@ -201,7 +201,7 @@ module Cge
 				src.attribute_dictionaries[attr.name].each{|k,v|
 					dest.set_attribute(attr.name,k,v)
 				}
-			}
+			}unless src.attribute_dictionaries.nil?
 			dest.layer=src.layer
 		end		
 		
@@ -279,54 +279,20 @@ module Cge
 		  :max_height =>600,
 		  :style => UI::HtmlDialog::STYLE_UTILITY
 		})
-		_html="<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0>"+"\r\n"\
-			+"<html xmlns=\"http://www.w3.org/1999/xhtml\">"+"\r\n"\
-			+"<head>"+"\r\n"\
-			+"<meta charset=utf-8\" />"+"\r\n"\
-			+"<title>Apiglio Cge MovTool</title>"+"\r\n"\
-			+""+"\r\n"\
-			+"<script>"+"\r\n"\
-			+""+"\r\n"\
-			+"function inputChange()"+"\r\n"\
-			+"{"+"\r\n"\
-			+"sketchup.set_move_unit(document.getElementById(\"inputbox\").value)"+"\r\n"\
-			+"}"+"\r\n"\
-			+"function checkboxChange()"+"\r\n"\
-			+"{"+"\r\n"\
-			+"sketchup.set_move_copy(document.getElementById(\"checkbox1\").checked)"+"\r\n"\
-			+"}"+"\r\n"\
-			+""+"\r\n"\
-			+"</script>"+"\r\n"\
-			+""+"\r\n"\
-			+"</head>"+"\r\n"\
-			+""+"\r\n"\
-			+"<body>"+"\r\n"\
-			+""+"\r\n"\
-			+"移动单位：<input id=\"inputbox\" style=\"width:60;height:20\" onkeyup=\"inputChange()\" value=\"100\">毫米<br><br>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.x_positive()\">X+</button>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.x_negative()\">X-</button><br><br>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.y_positive()\">Y+</button>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.y_negative()\">Y-</button><br><br>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.z_positive()\">Z+</button>"+"\r\n"\
-			+"<button style=\"width:30;height:30\" onclick=\"sketchup.z_negative()\">Z-</button><br><br>"+"\r\n"\
-			+"<input id=\"checkbox1\" type=\"checkbox\"  onchange=\"checkboxChange()\">复制"+"\r\n"\
-			+""+"\r\n"\
-			+"</body>"+"\r\n"\
-			+"</html>"
-
+		_html=File.read(__dir__+"/UI/MovTool.html")
 
 		@viewerWindow.add_action_callback("x_positive"){|action_context,value|
-			x_move(get_the_only_sel,@move_unit)}
+			x_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("x_negative"){|action_context,value|
-			x_move(get_the_only_sel,-@move_unit)}
+			x_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("y_positive"){|action_context,value|
-			y_move(get_the_only_sel,@move_unit)}
+			y_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("y_negative"){|action_context,value|
-			y_move(get_the_only_sel,-@move_unit)}
+			y_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("z_positive"){|action_context,value|
-			z_move(get_the_only_sel,@move_unit)}
+			z_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("z_negative"){|action_context,value|
-			z_move(get_the_only_sel,-@move_unit)}
+			z_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
 		@viewerWindow.add_action_callback("set_move_unit"){|action_context,value|
 			@move_unit=value.to_f.mm}
 		@viewerWindow.add_action_callback("set_move_copy"){|action_context,value|
@@ -447,6 +413,7 @@ module Cge
 	module Defs
 		
 		#清除未使用的组件定义
+		#这不就是purge_unused吗？？？
 		def self.cleaner
 			defs=Sketchup.active_model.definitions
 			useless=defs.select{|i|i.instances.empty?}
