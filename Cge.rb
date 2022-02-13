@@ -139,7 +139,6 @@ module Cge
 	
 	
 	
-
 	
 	def self.get_transformation(ins)
 		tmp=ins
@@ -745,6 +744,17 @@ module Cge
 		def is_flatten?
 			@cg.definition.entities.select{|i|i.is_a?(Sketchup::Group) or i.is_a?(Sketchup::ComponentInstance)}.empty?
 		end
+		#这个的树状结构挺复杂，暂时写不完，每一个instance可能交叉在不同的层次中，需要针对个例进行穷举
+		# def pos2ents(target=Sketchup.active_model)
+			# tmp=@cg
+			# res=[]
+			# res<<tmp.definition.instances.map(&:transformation)
+			# tmp=tmp.definition
+			# while (ins!=target_ents)and(ins!=Sketchup.active_model) do
+				# res<<ins.def
+				# ins=ins.parent
+			# end
+		# end
 	end
 	
 	[Sketchup::Group,Sketchup::ComponentInstance].each{|klass|
