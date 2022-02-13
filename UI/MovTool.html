@@ -1,0 +1,35 @@
+﻿<html>
+<head>
+	<meta charset=utf-8" />
+	<title>Apiglio Cge MovTool</title>
+	<script>
+	function inputChange(){
+		sketchup.set_move_unit(document.getElementById("inputbox").value)
+	}
+	function checkboxChange(){
+		sketchup.set_move_copy(document.getElementById("checkbox1").checked)
+	}
+	</script>
+</head>
+<body>
+	移动单位：
+	<input id="inputbox" style="width:60;height:20" onkeyup="inputChange()" value="100">毫米
+	<br><br>
+	<button style="width:30;height:30" onclick="sketchup.x_positive()">X+
+	</button>
+	<button style="width:30;height:30" onclick="sketchup.x_negative()">X-
+	</button>
+	<br><br>
+	<button style="width:30;height:30" onclick="sketchup.y_positive()">Y+
+	</button>
+	<button style="width:30;height:30" onclick="sketchup.y_negative()">Y-
+	</button>
+	<br><br>
+	<button style="width:30;height:30" onclick="sketchup.z_positive()">Z+
+	</button>
+	<button style="width:30;height:30" onclick="sketchup.z_negative()">Z-
+	</button>
+	<br><br>
+	<input id="checkbox1" type="checkbox"  onchange="checkboxChange()">复制
+</body>
+</html>
