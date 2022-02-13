@@ -31,9 +31,10 @@ in SketchUp Ruby Script
 + only contains one module named Proj
 
 
-**Trans** is for some advanced moving operation such as randon moving
+**Trans** is for transforming and shaping in some complex way
 + Trans::Reduction uses simpler shape to describe a common shape
 + Trans::Rand is random moving
++ Trans::Curve is for drawing curve
 
 **Cam** is for camera action
 + only contains one module named Cam yet
