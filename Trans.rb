@@ -120,4 +120,71 @@ module Trans
 		def self.m3d(dist,arr=nil) action("Apiglio Trans: 三维随机平移",arr){|e|movement3D(e,dist)} end
 				
 	end
+	
+	module Curve
+		#三点弧的代码版本
+		def self.add_arc_3point(*arg)
+			if arg.length==3 then pts=arg.to_a else
+				if arg[0].is_a? Array then pts=arg[0].to_a
+				else raise ArgumentError.new("3 Point3 Required.") end
+			end
+
+			pos=pts.map{|p|Geom::Point3d.new(p)}
+			v1=pos[0]-pos[1];v2=pos[2]-pos[1]
+			v1.length=v1.length/2
+			v2.length=v2.length/2
+			m1=pos[1]+v1;m2=pos[1]+v2
+
+			plane=Geom.fit_plane_to_points(pos)
+			normal=Geom.intersect_plane_plane([m1,v1],[m2,v2])
+			center=Geom.intersect_line_plane(normal,plane)
+			radius=center.distance(pos[0])
+
+			vector_0=pos[0]-center
+			vector_1=pos[1]-center
+			vector_2=pos[2]-center
+			ang01=vector_0.angle_between(vector_1)
+			ang02=vector_0.angle_between(vector_2)
+			ang12=vector_1.angle_between(vector_2)
+
+			if (ang02-(ang01+ang12)).abs<0.000001 then
+				unless normal[1].samedirection?(vector_1*vector_2) then normal[1].reverse! end
+				ea=ang02
+			else
+				ea=2*Math::PI-ang02
+				if (ang01-(ang12+ang02)).abs<0.000001 then
+					unless normal[1].samedirection?(vector_1*vector_2) then normal[1].reverse! end
+				else
+					unless normal[1].samedirection?(vector_0*vector_1) then normal[1].reverse! end
+				end
+			end
+
+			Sketchup.active_model.entities.add_arc(center,vector_0,normal[1],radius,0,ea)
+			return nil
+		end
+		
+		#两点弧的代码版本
+		def self.add_arc_2point(pt1,pt2,vec)
+			unless pt1.respond_to?(:on_line?) then raise ArgumentError.new("Point3d or Array required.") end
+			unless pt2.respond_to?(:on_line?) then raise ArgumentError.new("Point3d or Array required.") end
+			unless vec.respond_to?(:normalize) then raise ArgumentError.new("Vector3d or Array required.") end
+
+			pos1=Geom::Point3d.new(pt1)
+			pos2=Geom::Point3d.new(pt2)
+			vector=Geom::Vector3d.new(vec)
+			chord=pos2-pos1
+			mid_chord=chord
+			mid_chord.length=chord.length/2
+			mid=pos1+mid_chord
+			
+			normal_vector=chord*vector
+			depth_vector=normal_vector*chord
+			depth_vector.length=depth_vector.dot(vector)/depth_vector.length
+			pos3=mid+depth_vector
+			
+			add_arc_3point(pos1,pos3,pos2)
+
+		end
+	end
+	
 end
