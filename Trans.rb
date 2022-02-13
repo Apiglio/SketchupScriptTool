@@ -103,6 +103,16 @@ module Trans
 			t=Geom::Transformation.translation(vector)
 			Sketchup.active_model.entities.transform_entities(t,ent)
 		end
+		def self.scaling(ent,range)
+			raise ArgumentError.new("Range expected but #{range.class} found.") unless range.is_a?(Range)
+			centre=ent.bounds.center
+			factor=range.begin+(range.end-range.begin)*rand
+			trans=Geom::Transformation.scaling(centre,*[factor]*3)
+			Sketchup.active_model.entities.transform_entities(trans,ent)
+		end
+		
+		
+		
 		def self.action(action_name,arr,&block)
 			arr=Sketchup.active_model.selection.to_a if arr.nil?
 			arr=[arr] unless arr.respond_to?(:[])
@@ -118,6 +128,7 @@ module Trans
 		def self.r3d(arr=nil) action("Apiglio Trans: 三维随机旋转",arr){|e|rotation3D(e)} end
 		def self.m2d(dist,arr=nil) action("Apiglio Trans: 水平面随机平移",arr){|e|movement2D(e,dist)} end
 		def self.m3d(dist,arr=nil) action("Apiglio Trans: 三维随机平移",arr){|e|movement3D(e,dist)} end
+		def self.sca(range,arr=nil) action("Apiglio Trans: 随机等比例缩放",arr){|e|scaling(e,range)} end
 				
 	end
 	
