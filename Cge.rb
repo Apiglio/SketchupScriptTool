@@ -487,7 +487,29 @@ module Cge
 			nil
 		end
 		
-
+		#原位置原大小替换组件
+		def self.replace_by_trse(aIns,aDef)
+			#保持aIns的BoundingBox属性替换定义为aDef
+			raise ArgumentError unless aIns.is_a?(Sketchup::ComponentInstance)
+			raise ArgumentError unless aDef.is_a?(Sketchup::ComponentDefinition)
+			#判断参数类型是否正确
+			Sketchup.active_model.start_operation("replace by trse",true)
+			#开始一个新的可撤销操作，用于撤销
+			b1=aIns.definition.bounds
+			b2=aDef.bounds
+			sw=b1.width/b2.width
+			sh=b1.height/b2.height
+			sd=b1.depth/b2.depth
+			#获取定义内图元范围的尺度比例
+			#即替换前后定义的EBCD的长高宽比例
+			ts=Geom::Transformation.scaling(sw,sh,sd)   #计算用于调整组件大小的缩放变换
+			trse=aIns.cge.trse                          #因式分解组件实例的位置
+			aIns.definition=aDef                        #替换组件实例的定义
+			aIns.transformation=trse[0]*trse[1]*trse[2]*trse[3]*ts
+			#将新的组合变换赋值给组件实例
+			Sketchup.active_model.commit_operation
+			#提交可撤销操作，用于撤销
+		end
 		
 		
 	end
@@ -708,9 +730,47 @@ module Cge
 		def test
 			UI.messagebox(@cg)
 		end
+
+		#将一个变换分解出平移(T)、旋转(R)、缩放(S)三个变换及其计算的残余(E)
+		def CgeHelper.trans_to_trse(trans)
+			tmp=Geom::Transformation.new(trans)
+			t=Geom::Transformation.new([1,0,0,0,0,1,0,0,0,0,1,0]+tmp.to_a[12..15])
+			tmp=t.inverse*tmp
+			#分解出平移分量，并从变换组合中移除此变换
+			xx=tmp.xaxis       #获取剩余变换后的x轴
+			yy=tmp.yaxis       #获取剩余变换后的y轴
+			xx.length=1        #标准化x轴方向长度
+			yy.length=1        #标准化y轴方向长度
+			unless xx.perpendicular?(yy) then
+			xtmp=xx
+			xtmp.length=yy.dot(xx)
+			yy=yy-xtmp
+			end
+			#在xy平面中重新确定y轴方向以保证其与x轴垂直
+			zz=xx.cross(yy)    #计算垂直于xy平面的z轴方向
+			zz.length=1        #标准化z轴方向长度
+			#这里没有判断轴方向是否符合右手系
+			r=Geom::Transformation.axes(tmp.origin,xx,yy,zz)
+			#分解出旋转分量
+			tmp=r.inverse*tmp  #移除旋转分量
+			arr=tmp.to_a
+			s=Geom::Transformation.new([arr[0],0,0,0,0,arr[5],0,0,0,0,arr[10],0,0,0,0,arr[15]])
+			#分解出轴线缩放分量
+			tmp=s.inverse*tmp
+			#剩余的变换直接作为最后一个参数输出
+			#若为正交变换则tmp.identity?为真。
+			return [t,r,s,tmp]
+		end
+		def trse
+			CgeHelper.trans_to_trse(@cg.transformation)
+		end
+		
 		def is_flatten?
 			@cg.definition.entities.select{|i|i.is_a?(Sketchup::Group) or i.is_a?(Sketchup::ComponentInstance)}.empty?
 		end
+		
+		
+		
 		#这个的树状结构挺复杂，暂时写不完，每一个instance可能交叉在不同的层次中，需要针对个例进行穷举
 		# def pos2ents(target=Sketchup.active_model)
 			# tmp=@cg
