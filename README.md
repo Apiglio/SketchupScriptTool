@@ -32,7 +32,7 @@ in SketchUp Ruby Script
 
 
 **Trans** is for some advanced moving operation such as randon moving
-+ Trans::Reduction uses simpler shape to desribe a common shape
++ Trans::Reduction uses simpler shape to describe a common shape
 + Trans::Rand is random moving
 
 **Cam** is for camera action
