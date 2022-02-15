@@ -77,5 +77,76 @@ module Cam
 		return(t)
 	end
 	
+	
+	
+	#用来做分级标注显示，等级较低的标注在距视点较远距离时会隐藏
+	module LabelRanker
+		@ents_lnk=0
+		@ents_obs=0
+		@view_lnk=0
+		@view_obs=0
+		@label_list=[]
+		@mod_obs=nil
+		
+		class EntsObserver < Sketchup::EntitiesObserver
+			
+		end
+		
+		class ViewObserver < Sketchup::ViewObserver
+			
+		end
+		
+		class ModObserver < Sketchup::ModelObserver
+			def onActivePathChanged(model)
+				LabelRanker.update_obs
+			end
+		end
+		
+		def self.test
+			return [@ents_lnk,@ents_obs,@view_lnk,@view_obs,@mod_obs,@label_list]
+		end
+		
+		def self.update_obs
+			@ents_lnk.remove_observer(@ents_obs) if @ents_lnk!=0
+			@view_lnk.remove_observer(@view_obs) if @view_lnk!=0
+			
+			if Sketchup.active_model.active_path.nil? then
+				@ents_lnk=Sketchup.active_model
+			else
+				@ents_lnk=Sketchup.active_model.active_path.last
+			end
+
+			@ents_obs=EntsObserver.new
+			@ents_lnk.add_observer(@ents_obs)
+			
+			@view_lnk=Sketchup.active_model.active_view
+			@view_obs=ViewObserver.new
+			@view_lnk.add_observer(@view_obs)
+		end
+		
+		def self.start
+			Sketchup.active_model.remove_observer(@mod_obs) unless @mod_obs.nil?
+			@mod_obs=ModObserver.new
+			Sketchup.active_model.add_observer(@mod_obs)
+			
+			update_obs()
+			Sketchup.active_model.entities.each{|e|
+				if e.is_a?(Sketchup::Text) or e.is_a?(Sketchup::Dimension) then
+					@label_list<<(e)
+				end
+			}
+			
+		end
+		
+		def self.stop
+			@ents_lnk.remove_observer(@ents_obs)
+			@view_lnk.remove_observer(@view_obs)
+			@label_list.each{|l|l.visible=true}
+			@label_list.clear
+		end
+		
+	end
+	
+	
 end
 
