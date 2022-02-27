@@ -136,10 +136,7 @@ module Cge
 		}
 		@selist
 	end
-	
-	
-	
-	
+		
 	def self.get_transformation(ins)
 		tmp=ins
 		res=Geom::Transformation.new
@@ -769,6 +766,52 @@ module Cge
 			@cg.definition.entities.select{|i|i.is_a?(Sketchup::Group) or i.is_a?(Sketchup::ComponentInstance)}.empty?
 		end
 		
+		#将组件转化为群组，参数表示是否保存组件定义中的属性
+		def to_group(preserve_definition_attribute=false)
+			raise ArgumentError.new("ComponentInstance expected but #{@cg.class} found.") unless @cg.is_a?(Sketchup::ComponentInstance)
+			Sketchup.active_model.start_operation("Cge:转为群组")
+			d=@cg.definition
+			grp=@cg.parent.entities.add_group([@cg])
+			@cg.attribute_dictionaries.entries.each{|ad|
+				ad.to_h.each{|k,v|
+					grp.set_attribute(ad.name,k,v)
+				}
+			}
+			d.attribute_dictionaries.entries.each{|ad|
+				grp.set_attribute("Apiglio Cge ComponentGroup",ad.name,ad.to_h.to_s)
+			} if preserve_definition_attribute
+			grp.name=d.name
+			@cg.explode
+			Sketchup.active_model.definitions.remove(d) if d.instances.length==0
+			Sketchup.active_model.commit_operation()
+			return(grp)
+		end
+		
+		#将群组转化回组件，动态组件也有效
+		def back_to_compoent
+			raise ArgumentError.new("Group expected but #{@cg.class} found.") unless @cg.is_a?(Sketchup::Group)
+			Sketchup.active_model.start_operation("Cge:转回组件")
+			attrs=@cg.attribute_dictionaries.entries.map{|i|[i.name,i.to_h]}
+			attrd=attrs.find{|i|i[0]=="Apiglio Cge ComponentGroup"}
+			attrs.delete(attrd)
+			oriname=@cg.name
+			ins=@cg.to_component
+			ins.definition.name=Sketchup.active_model.definitions.unique_name(oriname)
+			attrd[1].each{|k,v|
+				h=eval(v)
+				h.each{|kk,vv|
+					begin
+						ins.definition.set_attribute(k,kk,vv)
+					rescue
+						puts "属性#{k}.#{kk}赋值（#{vv}）失败。"
+					end
+				}
+			} unless attrd.nil?
+			ins.attribute_dictionaries.delete("Apiglio Cge ComponentGroup")
+			Cge::DC.redraw(ins,false)
+			Sketchup.active_model.commit_operation()
+			return(ins)
+		end
 		
 		
 		#这个的树状结构挺复杂，暂时写不完，每一个instance可能交叉在不同的层次中，需要针对个例进行穷举
