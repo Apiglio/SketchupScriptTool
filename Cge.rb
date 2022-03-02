@@ -170,9 +170,8 @@ module Cge
 		return path_traverse(hash).map{|i|Sketchup::InstancePath.new(i.reverse.map{|i|i.keys[0]})}
 	end
 	#查找当前路径中的可能图元路径
-	def self.find_paths_in_active(ent)
+	def self.find_paths_in_active(ent,ap=Sketchup.active_model.active_path)
 		list=find_paths(ent)
-		ap=Sketchup.active_model.active_path
 		ap=[] if ap.nil?
 		list.reject!{|path|
 			path.to_a[0...ap.length]!=ap
@@ -847,16 +846,13 @@ module Cge
 			return(ins)
 		end
 		
-		#具体instance的transformation转换到path的坐标系中
-		def project_to_path(target=Sketchup.active_model)
-			tmp=@cg
-			res=[]
-			res<<tmp.definition.instances.map(&:transformation)
-			tmp=tmp.definition
-			while (ins!=target_ents)and(ins!=Sketchup.active_model) do
-				res<<ins.def
-				ins=ins.parent
-			end
+		#具体instance的transformation转换到世界坐标系中
+		def global_trans
+			model=Sketchup.active_model
+			ap=model.active_path
+			ap=[] if ap.nil?
+			lst=Cge.find_paths_in_active(@cg,ap)
+			lst.map{|p|p.transformation*model.edit_transform}
 		end
 	end
 	
