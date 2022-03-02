@@ -136,16 +136,50 @@ module Cge
 		}
 		@selist
 	end
-		
-	def self.get_transformation(ins)
-		tmp=ins
-		res=Geom::Transformation.new
-		while tmp.is_a? Sketchup::ComponentInstance do
-			res=res*tmp.transformation
-			tmp=tmp.parent
-		end
+	
+	#私有方法：用于查找ent所在的路径，以Hash为树结构，递归。
+	def self.find_path(ent)
+		res={ent=>[]}
+		p=ent.parent
+		res[ent]=ent.parent.instances.map{|inst|find_path(inst)} unless p.is_a?(Sketchup::Model)
 		return res
 	end
+	private_class_method :find_path
+	#私有方法：用于将Hash的树结构遍历出路径，递归。
+	@hash_paths=[]
+	def self.path_traverse(hash,list=nil)
+		if list.nil? then
+			list=[]
+			@hash_paths=[]
+		end
+		ins=hash.keys[0]
+		lst=hash.values[0]
+		if lst.empty? then
+			@hash_paths<<list
+		else
+			lst.each{|inst|
+				path_traverse(inst,list+[inst])
+			}
+		end
+		return @hash_paths
+	end
+	private_class_method :path_traverse
+	#查找某个图元的所有可能路径
+	def self.find_paths(ent)
+		hash=find_path(ent)
+		return path_traverse(hash).map{|i|Sketchup::InstancePath.new(i.reverse.map{|i|i.keys[0]})}
+	end
+	#查找当前路径中的可能图元路径
+	def self.find_paths_in_active(ent)
+		list=find_paths(ent)
+		ap=Sketchup.active_model.active_path
+		ap=[] if ap.nil?
+		list.reject!{|path|
+			path.to_a[0...ap.length]!=ap
+		} unless ap.empty?
+		return list
+	end
+	
 
 	def self.build_connective_group(arr)
 		Sketchup.active_model.start_operation("非接触组件创建",true)
@@ -813,18 +847,17 @@ module Cge
 			return(ins)
 		end
 		
-		
-		#这个的树状结构挺复杂，暂时写不完，每一个instance可能交叉在不同的层次中，需要针对个例进行穷举
-		# def pos2ents(target=Sketchup.active_model)
-			# tmp=@cg
-			# res=[]
-			# res<<tmp.definition.instances.map(&:transformation)
-			# tmp=tmp.definition
-			# while (ins!=target_ents)and(ins!=Sketchup.active_model) do
-				# res<<ins.def
-				# ins=ins.parent
-			# end
-		# end
+		#具体instance的transformation转换到path的坐标系中
+		def project_to_path(target=Sketchup.active_model)
+			tmp=@cg
+			res=[]
+			res<<tmp.definition.instances.map(&:transformation)
+			tmp=tmp.definition
+			while (ins!=target_ents)and(ins!=Sketchup.active_model) do
+				res<<ins.def
+				ins=ins.parent
+			end
+		end
 	end
 	
 	[Sketchup::Group,Sketchup::ComponentInstance].each{|klass|
