@@ -159,14 +159,14 @@ module Trans
 			ang12=vector_1.angle_between(vector_2)
 
 			if (ang02-(ang01+ang12)).abs<0.000001 then
-				unless normal[1].samedirection?(vector_1*vector_2) then normal[1].reverse! end
+				normal[1].reverse! unless normal[1].samedirection?(vector_1*vector_2)
 				ea=ang02
 			else
 				ea=2*Math::PI-ang02
 				if (ang01-(ang12+ang02)).abs<0.000001 then
-					unless normal[1].samedirection?(vector_1*vector_2) then normal[1].reverse! end
+					normal[1].reverse! unless normal[1].samedirection?(vector_1*vector_2)
 				else
-					unless normal[1].samedirection?(vector_0*vector_1) then normal[1].reverse! end
+					normal[1].reverse! unless normal[1].samedirection?(vector_0*vector_1)
 				end
 			end
 
@@ -176,9 +176,9 @@ module Trans
 		
 		#两点弧的代码版本
 		def self.add_arc_2point(pt1,pt2,vec)
-			unless pt1.respond_to?(:on_line?) then raise ArgumentError.new("Point3d or Array required.") end
-			unless pt2.respond_to?(:on_line?) then raise ArgumentError.new("Point3d or Array required.") end
-			unless vec.respond_to?(:normalize) then raise ArgumentError.new("Vector3d or Array required.") end
+			raise ArgumentError.new("Point3d or Array required.") unless pt1.respond_to?(:on_line?)
+			raise ArgumentError.new("Point3d or Array required.") unless pt2.respond_to?(:on_line?)
+			raise ArgumentError.new("Vector3d or Array required.") unless vec.respond_to?(:normalize)
 
 			pos1=Geom::Point3d.new(pt1)
 			pos2=Geom::Point3d.new(pt2)
