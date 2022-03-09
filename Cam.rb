@@ -77,23 +77,30 @@ module Cam
 		return(t)
 	end
 	
-	
-	
+
 	#用来做分级标注显示，等级较低的标注在距视点较远距离时会隐藏
 	module LabelRanker
 		@ents_lnk=0
 		@ents_obs=0
 		@view_lnk=0
 		@view_obs=0
-		@label_list=[]
+		$apiglio_Cam_LabelRanker_list=[]
 		@mod_obs=nil
+
 		
 		class EntsObserver < Sketchup::EntitiesObserver
-			
+			def onElementAdded(entities, entity)
+				$apiglio_Cam_LabelRanker_list|=[entity] if entity.is_a?(Sketchup::Text)
+			end
+			def onElementRemoved(entities, entity_id)
+				$apiglio_Cam_LabelRanker_list.reject!{|i|i.deleted?}
+			end
 		end
 		
 		class ViewObserver < Sketchup::ViewObserver
-			
+			def onViewChanged(view)
+				#puts "onViewChanged: #{view}"
+			end
 		end
 		
 		class ModObserver < Sketchup::ModelObserver
@@ -103,7 +110,7 @@ module Cam
 		end
 		
 		def self.test
-			return [@ents_lnk,@ents_obs,@view_lnk,@view_obs,@mod_obs,@label_list]
+			return [@ents_lnk,@ents_obs,@view_lnk,@view_obs,@mod_obs,$apiglio_Cam_LabelRanker_list]
 		end
 		
 		def self.update_obs
@@ -117,7 +124,7 @@ module Cam
 			end
 
 			@ents_obs=EntsObserver.new
-			@ents_lnk.add_observer(@ents_obs)
+			@ents_lnk.entities.add_observer(@ents_obs)
 			
 			@view_lnk=Sketchup.active_model.active_view
 			@view_obs=ViewObserver.new
@@ -132,7 +139,7 @@ module Cam
 			update_obs()
 			Sketchup.active_model.entities.each{|e|
 				if e.is_a?(Sketchup::Text) or e.is_a?(Sketchup::Dimension) then
-					@label_list<<(e)
+					$apiglio_Cam_LabelRanker_list|=[e]
 				end
 			}
 			
@@ -141,8 +148,9 @@ module Cam
 		def self.stop
 			@ents_lnk.remove_observer(@ents_obs)
 			@view_lnk.remove_observer(@view_obs)
-			@label_list.each{|l|l.visible=true}
-			@label_list.clear
+			$apiglio_Cam_LabelRanker_list.each{|l|l.visible=true}
+			$apiglio_Cam_LabelRanker_list.clear
+			GC.start
 		end
 		
 	end
