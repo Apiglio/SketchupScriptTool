@@ -39,4 +39,4 @@ mostly run on SketchUp 2018 (ruby 1.9)
 + Trans::Curve is for drawing curve. 曲线操作，这个本应该单独是一个模块，暂时在此处。
 
 **Cam** is for camera action. 与相机有关的操作。
-+ only contains one module named Cam yet. 
++ Cam::LabelRanker is for hiding or showing label by level. 根据标注层级实时控制图元的显隐性。
