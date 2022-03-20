@@ -265,8 +265,8 @@ module Mov
 	
 	@command_list.each{|i|
 		if i.instance_of? UI::Command then
-			i.small_icon="Image.Mov\\"+i.menu_text+".svg"
-			i.large_icon="Image.Mov\\"+i.menu_text+".svg"
+			i.small_icon="Icon/mov/"+i.menu_text+".svg"
+			i.large_icon="Icon/mov/"+i.menu_text+".svg"
 			
 		end
 	}

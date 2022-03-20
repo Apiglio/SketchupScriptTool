@@ -100,6 +100,19 @@ module Cam
 		class ViewObserver < Sketchup::ViewObserver
 			def onViewChanged(view)
 				#puts "onViewChanged: #{view}"
+<<<<<<< HEAD
+				eye_point=view.eye.position
+=======
+				$apiglio_Cam_LabelRanker_list.each{|text|
+					next if text.point.nil?
+					max_dist=Cam::LabelRanker.get_rank(text)
+					next if max_dist.nil?
+					distance=view.camera.eye.distance(text.point)
+					text.visible=true if distance<=max_dist and text.hidden?
+					text.hidden=true if  distance>max_dist and text.visible?
+				}
+				
+>>>>>>> 583668f (LabelRanker)
 			end
 		end
 		
@@ -151,6 +164,13 @@ module Cam
 			$apiglio_Cam_LabelRanker_list.each{|l|l.visible=true}
 			$apiglio_Cam_LabelRanker_list.clear
 			GC.start
+		end
+		
+		def self.set_rank(text,value)
+			text.set_attribute("APIGLIO","LabelRank",value)
+		end
+		def self.get_rank(text)
+			text.get_attribute("APIGLIO","LabelRank")
 		end
 		
 	end
