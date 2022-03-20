@@ -322,10 +322,8 @@ module Sca
 	
 	@command_list.each{|i|
 		if i.instance_of? UI::Command then
-			#i.small_icon="Image.Sca\\"+i.menu_text+"_small.png"
-			#i.large_icon="Image.Sca\\"+i.menu_text+"_large.png"
-			i.small_icon="Image.Sca\\"+i.menu_text+".svg"
-			i.large_icon="Image.Sca\\"+i.menu_text+".svg"
+			i.small_icon="Icon/sca/"+i.menu_text+".svg"
+			i.large_icon="Icon/sca/"+i.menu_text+".svg"
 			
 		end
 	}

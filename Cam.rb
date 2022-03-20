@@ -129,7 +129,6 @@ module Cam
 						#
 					end
 				}
-				
 			end
 		end
 		
