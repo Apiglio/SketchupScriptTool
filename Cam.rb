@@ -100,6 +100,7 @@ module Cam
 		class ViewObserver < Sketchup::ViewObserver
 			def onViewChanged(view)
 				#puts "onViewChanged: #{view}"
+				eye_point=view.eye.position
 			end
 		end
 		
