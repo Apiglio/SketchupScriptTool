@@ -90,17 +90,45 @@ module Cam
 		
 		class EntsObserver < Sketchup::EntitiesObserver
 			def onElementAdded(entities, entity)
-				$apiglio_Cam_LabelRanker_list|=[entity] if entity.is_a?(Sketchup::Text)
+				$apiglio_Cam_LabelRanker_list|=[entity] if entity.is_a?(Sketchup::Text) or entity.is_a?(Sketchup::Dimension)
 			end
 			def onElementRemoved(entities, entity_id)
 				$apiglio_Cam_LabelRanker_list.reject!{|i|i.deleted?}
+				#$apiglio_Cam_LabelRanker_list.reject!{|i|i.entityID==entity_id}
 			end
 		end
 		
 		class ViewObserver < Sketchup::ViewObserver
+			def text_world_position(text)
+				tmp=text
+				res=text.point
+				mod=Sketchup.active_model
+				while tmp.parent!=mod
+					inst=tmp.parent.instances
+					return nil unless inst.length==1 # 排除标注在组件（或有多个实例的群组）中的情况
+					tmp=inst[0]
+					res=tmp.transformation.inverse*res
+				end
+				return res
+			end
+			private :text_world_position
+			
 			def onViewChanged(view)
 				#puts "onViewChanged: #{view}"
-				eye_point=view.eye.position
+				$apiglio_Cam_LabelRanker_list.each{|text|
+					if text.is_a?(Sketchup::Text) then
+						next if text_world_position(text).nil?
+						max_dist=Cam::LabelRanker.get_rank(text)
+						next if max_dist.nil?
+						distance=view.camera.eye.distance(text.point)
+						text.visible=true if distance<=max_dist and text.hidden?
+						text.hidden=true if  distance>max_dist and text.visible?
+					elsif text.is_a?(Sketchup::Dimension) then
+						#
+					else
+						#
+					end
+				}
 			end
 		end
 		
@@ -132,18 +160,25 @@ module Cam
 			@view_lnk.add_observer(@view_obs)
 		end
 		
+		def self.all_text_into_list(model_or_defs)
+			model_or_defs.entities.grep(Sketchup::Text).each{|e|$apiglio_Cam_LabelRanker_list|=[e]}
+			model_or_defs.entities.grep(Sketchup::Group).each{|g|all_text_into_list(g.definition)}
+		end
+		def self.all_dimension_into_list(model_or_defs)
+			model_or_defs.entities.grep(Sketchup::Dimension).each{|e|$apiglio_Cam_LabelRanker_list|=[e]}
+			model_or_defs.entities.grep(Sketchup::Group).each{|g|all_dimension_into_list(g.definition)}
+		end
+		private_class_method :all_text_into_list
+		private_class_method :all_dimension_into_list
+		
 		def self.start
 			Sketchup.active_model.remove_observer(@mod_obs) unless @mod_obs.nil?
 			@mod_obs=ModObserver.new
 			Sketchup.active_model.add_observer(@mod_obs)
-			
 			update_obs()
-			Sketchup.active_model.entities.each{|e|
-				if e.is_a?(Sketchup::Text) or e.is_a?(Sketchup::Dimension) then
-					$apiglio_Cam_LabelRanker_list|=[e]
-				end
-			}
-			
+			all_text_into_list(Sketchup.active_model)
+			all_dimension_into_list(Sketchup.active_model)
+			Sketchup.active_model.active_view.invalidate
 		end
 		
 		def self.stop
@@ -152,6 +187,13 @@ module Cam
 			$apiglio_Cam_LabelRanker_list.each{|l|l.visible=true}
 			$apiglio_Cam_LabelRanker_list.clear
 			GC.start
+		end
+		
+		def self.set_rank(text,value)
+			text.set_attribute("APIGLIO","LabelRank",value)
+		end
+		def self.get_rank(text)
+			text.get_attribute("APIGLIO","LabelRank")
 		end
 		
 	end
