@@ -506,7 +506,39 @@ module Sel
 		end
 		sels.add edges_mightbe
 	end
-	
+	#选中的边线根据首尾相连排序
+	def self.find_seq(edges=nil)
+		edges=Sketchup.active_model.selection.grep(Sketchup::Edge) if edges.nil?
+		return nil if edges.empty?
+		res=[edges.pop]
+		pts=res[0].start
+		while not edges.empty? do
+			es=edges.select{|e|e.vertices.include?(pts)}.reject{|e|e==res[-1]}
+			case es.length
+				when 0
+					break
+				when 1
+					res.push(es[0])
+					pts=es[0].other_vertex(pts)
+				else
+					raise RuntimeError.new("发现分叉")
+			end
+		end
+		pts=res[0].end
+		while not edges.empty? do
+			es=edges.select{|e|e.vertices.include?(pts)}.reject{|e|e==res[0]}
+			case es.length
+				when 0
+					break
+				when 1
+					res.unshift(es[0])
+					pts=es[0].other_vertex(pts)
+				else
+					raise RuntimeError.new("发现分叉")
+			end
+		end
+		res
+	end
 	
 	#===============================线面综合部================================
 	
