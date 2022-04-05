@@ -519,7 +519,7 @@ module Cge
 		
 		#将aDef全部原位置提取到最外层以达到扁平化组件结构的效果
 		def self.flat(aDef)
-			#Sketchup.active_model.start_operation("Cge::Defs扁平化")
+			Sketchup.active_model.start_operation("Cge::Defs扁平化")
 			need_to_placed=[]
 			need_to_flatten=[]
 			aDef.instances.each{|ins|
@@ -529,6 +529,9 @@ module Cge
 					need_to_flatten<<p
 				end
 			}
+			need_to_placed.each{|trans|
+				Sketchup.active_model.entities.add_instance(aDef,trans)
+			}
 			need_to_deleted=[]
 			need_to_flatten.uniq.each{|defi|
 				need_to_erased=defi.entities.select{|ent|ent.respond_to?(:definition)}
@@ -536,10 +539,8 @@ module Cge
 				defi.entities.erase_entities(need_to_erased.uniq)
 				need_to_deleted<<defi if defi.entities.length==0
 			}
-			need_to_placed.each{|trans|
-				Sketchup.active_model.entities.add_instance(aDef,trans)
-			}
-			#Sketchup.active_model.commit_operation()
+			need_to_deleted.each{|defi|Sketchup.active_model.definitions.remove(defi)}
+			Sketchup.active_model.commit_operation()
 		end
 		
 		#原位置原大小替换组件
