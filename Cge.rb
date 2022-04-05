@@ -517,6 +517,31 @@ module Cge
 			nil
 		end
 		
+		#将aDef全部原位置提取到最外层以达到扁平化组件结构的效果
+		def self.flat(aDef)
+			#Sketchup.active_model.start_operation("Cge::Defs扁平化")
+			need_to_placed=[]
+			need_to_flatten=[]
+			aDef.instances.each{|ins|
+				p=ins.parent
+				if p.is_a?(Sketchup::ComponentDefinition) then
+					need_to_placed+=Cge.find_paths(ins).map{|p|ins.transformation*p.transformation}
+					need_to_flatten<<p
+				end
+			}
+			need_to_deleted=[]
+			need_to_flatten.uniq.each{|defi|
+				need_to_erased=defi.entities.select{|ent|ent.respond_to?(:definition)}
+				need_to_erased.select!{|ent|ent.definition==aDef}
+				defi.entities.erase_entities(need_to_erased.uniq)
+				need_to_deleted<<defi if defi.entities.length==0
+			}
+			need_to_placed.each{|trans|
+				Sketchup.active_model.entities.add_instance(aDef,trans)
+			}
+			#Sketchup.active_model.commit_operation()
+		end
+		
 		#原位置原大小替换组件
 		def self.replace_by_trse(aIns,aDef)
 			#保持aIns的BoundingBox属性替换定义为aDef
