@@ -507,10 +507,11 @@ module Sel
 		sels.add edges_mightbe
 	end
 	#选中的边线根据首尾相连排序
-	def self.find_seq(edges=nil)
+	def self.find_seq(edges=nil,reverse=false)
 		edges=Sketchup.active_model.selection.grep(Sketchup::Edge) if edges.nil?
 		return nil if edges.empty?
 		res=[edges.pop]
+		rev=[-1] # 从start开始找下一个条边，因此初始段的end在start前，记为-1
 		pts=res[0].start
 		while not edges.empty? do
 			es=edges.select{|e|e.vertices.include?(pts)}.reject{|e|e==res[-1]}
@@ -519,6 +520,7 @@ module Sel
 					break
 				when 1
 					res.push(es[0])
+					if es[0].start==pts then rev.push(1) else rev.push(-1) end
 					pts=es[0].other_vertex(pts)
 				else
 					raise RuntimeError.new("发现分叉")
@@ -532,12 +534,17 @@ module Sel
 					break
 				when 1
 					res.unshift(es[0])
+					if es[0].end==pts then rev.unshift(1) else rev.unshift(-1) end
 					pts=es[0].other_vertex(pts)
 				else
 					raise RuntimeError.new("发现分叉")
 			end
 		end
-		res
+		if reverse then
+			return [res,rev].transpose
+		else
+			return res
+		end
 	end
 	
 	#===============================线面综合部================================
