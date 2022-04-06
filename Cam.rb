@@ -24,7 +24,6 @@ module Cam
 		raise ArgumentError.new("Sketchup::Curve expected but #{curve.class} found.") unless curve.is_a?(Sketchup::Curve)
 		raise ArgumentError.new("Fixnum expected but #{nparts.class} found.") unless nparts.is_a?(Fixnum)
 		raise ArgumentError.new("nparts must be >=2.") unless nparts>=2
-		#curve_len=curve.edges.map{|i|i.length}.inject{|a,b|a+=b}
 		curve_len=curve.length
 		lparts=curve_len/nparts
 		result=[curve.first_edge.line]#起点的相机位置
@@ -64,18 +63,36 @@ module Cam
 		result
 	end
 	
-	def self.curve_cam(curve,nparts,sec)
+	def self.curve_cam_thread(curve,nparts,sec)
 		t=Thread.new{
 			pvs=curve_vectors(curve,nparts)
 			time_unit=sec.to_f/nparts
 			view=Sketchup.active_model.active_view
 			pvs.each{|i|
 				view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
+				Sketchup.active_model.active_view.refresh
 				sleep(time_unit)
 			}
 		}
 		return(t)
 	end
+	def self.curve_cam_timer(curve,nparts,sec)
+		$cam_curve_cam_timer_pvs=curve_vectors(curve,nparts)
+		time_unit=sec.to_f/nparts
+		view=Sketchup.active_model.active_view
+		$cam_curve_cam_timer_state=0
+		$cam_curve_cam_timer_handle=UI.start_timer(time_unit,true){
+			i=$cam_curve_cam_timer_pvs[$cam_curve_cam_timer_state]
+			Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
+			$cam_curve_cam_timer_state+=1
+			UI.stop_timer($cam_curve_cam_timer_handle) unless $cam_curve_cam_timer_state < $cam_curve_cam_timer_pvs.length
+		}
+		return($cam_curve_cam_timer_handle)
+	end
+	def self.curve_cam(*arg)
+		curve_cam_thread(*arg)
+	end
+	
 	
 
 	#用来做分级标注显示，等级较低的标注在距视点较远距离时会隐藏
