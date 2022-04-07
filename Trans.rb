@@ -10,7 +10,27 @@ module Trans
 	def self.ty(dist) Geom::Transformation.translation([0,dist,0]) end
 	def self.tz(dist) Geom::Transformation.translation([0,0,dist]) end
 	
-	
+	module ViewDraw
+		def self.circle_points(center,normal,radius,segment=24)
+			raise ArgumentError.new("段数小于3") if segment<3
+			cen=Geom::Point3d.new(center)
+			nor=Geom::Vector3d.new(normal)
+			if nor.parallel?([0,0,1]) then
+				rdv=nor+[0,1,0]
+			else
+				rdv=nor+[0,0,1]
+			end
+			fir=nor.cross(rdv)
+			fir.length=radius
+			fir=cen+fir
+			ang=360.degrees/segment
+			res=[fir]
+			1.upto(segment-1){|i|
+				res.push(fir.transform(Geom::Transformation.rotation(cen,normal,i*ang)))
+			}
+			res
+		end
+	end
 	
 	module Reduction
 		def self.triangle_area(p1,p2,p3)
