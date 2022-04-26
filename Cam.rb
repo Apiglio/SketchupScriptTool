@@ -19,6 +19,11 @@ module Cam
 		alias va vactive
 	end
 	
+	#在给定画面高的实际尺寸情况下返回Camera类对应的比例尺大小
+	def camera_scale(camera,paper_height=297.mm)
+		raise ArgumentError.new("相机不是平行投影") if camera.perspective?
+		return paper_height / camera.height
+	end
 	
 	def self.curve_vectors(curve,nparts)
 		raise ArgumentError.new("Sketchup::Curve expected but #{curve.class} found.") unless curve.is_a?(Sketchup::Curve)
