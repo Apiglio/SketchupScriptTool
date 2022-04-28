@@ -220,6 +220,38 @@ module Cam
 		
 	end
 	
+	module Colorize
+		def self.by_depth(sels=nil,graduation=20,c1=[255,127,127],c2=[255,255,127],variation=0.8)
+			sels=Sketchup.active_model.selection.to_a if sels.nil?
+			Sketchup.active_model.start_operation("按高度设色")
+			begin
+				values=sels.map{|i|i.bounds.depth}
+				min=values.min
+				max=values.max
+				minmax=max-min
+				colors=[]
+				0.upto(graduation-1){|i|
+					pos=i.to_f/(graduation-1)
+					pon=1-pos
+					ct=[c1,c2].transpose.map{|i|pos*i[0]+pon*i[1]}
+					colors<<ct.map{|i|i.round(0)}
+				}
+				sels.each{|i|
+					position=(i.bounds.depth-min)/minmax.to_f
+					position**=variation
+					position*=(graduation-1)
+					cidx=position.floor
+					color=Sketchup::Color.new(colors[cidx])
+					i.material=color
+				}
+			rescue
+				Sketchup.active_model.abort_operation()
+				return nil
+			end
+			Sketchup.active_model.commit_operation()
+		end
+	end
+	
 	
 end
 
