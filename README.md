@@ -5,11 +5,11 @@ mostly run on SketchUp 2018 (ruby 1.9)
 
 ## 使用方法
 
-第一步：下载*.rb文件。
+第一步：以sel.rb为例，下载sel.rb文件到 *D:\\ruby_code\\* 路径。
 
 第二步：启动SketchUp后打开ruby控制台。
 
-第三步：使用**load**方法加载Ruby脚本。例如，下载sel.rb到D:\ruby_code\路径，然后在ruby控制台中输入以下代码：
+第三步：使用 *load* 方法加载Ruby脚本，然后在ruby控制台中输入以下代码：
 
 ```ruby
 load "D:\\ruby_code\\sel.rb"
