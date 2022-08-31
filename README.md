@@ -3,6 +3,29 @@ in SketchUp Ruby Script
 mostly run on SketchUp 2018 (ruby 1.9)
 在SketchUp 2018 (ruby 1.9) 中正常运行，较低版本不一定能正常使用。
 
+## 使用方法
+
+第一步：下载*.rb文件。
+
+第二步：启动SketchUp后打开ruby控制台。
+
+第三步：使用**load**方法加载Ruby脚本。例如，下载sel.rb到D:\ruby_code\路径，然后在ruby控制台中输入以下代码：
+
+```ruby
+load "D:\\ruby_code\\sel.rb"
+```
+
+第四步：调用脚本中模块的方法，例如以下两个案例：
+
+```ruby
+Sel.vert
+#以上代码执行sel.rb脚本中Sel模块中的vert方法
+Sel::Surf.soft!
+#以上代码执行sel.rb脚本中Sel模块中Surf模块之中的soft!方法
+```
+
+## 详细介绍
+
 **Mov** is for moving entities by axis and by fixed scale. 与移动图元有关的方法。
 + only contains one module named Mov. 
 
