@@ -26,6 +26,8 @@ Sel::Surf.soft!
 
 ## 详细介绍
 
+详细的模块介绍将逐步更新在[wiki页面](https://github.com/Apiglio/SketchupScriptTool/wiki)中。
+
 **Mov** is for moving entities by axis and by fixed scale. 与移动图元有关的方法。
 + only contains one module named Mov. 
 
