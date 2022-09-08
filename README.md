@@ -24,6 +24,12 @@ Sel::Surf.soft!
 #以上代码执行sel.rb脚本中Sel模块中Surf模块之中的soft!方法
 ```
 
+![X4 6B 8BG68CCL)_0S7%JU7](https://user-images.githubusercontent.com/42532325/189108954-81addbe2-dc68-4012-9b7a-b5c1c7c0e7a4.png)
+
+
+![image](https://user-images.githubusercontent.com/42532325/189108905-f3bb1802-b2e5-4e91-aebe-c64b227110c3.png)
+
+
 ## 详细介绍
 
 详细的模块介绍将逐步更新在[wiki页面](https://github.com/Apiglio/SketchupScriptTool/wiki)中。
