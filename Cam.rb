@@ -19,12 +19,38 @@ module Cam
 		alias va vactive
 	end
 	
-	#在给定画面高的实际尺寸情况下返回Camera类对应的比例尺大小
+	module Vector
+		def self.look_down(vector,angle)
+			return nil if vector.to_a[0..1].map{|i|i.round(3)} == [0,0]
+			origin_vector=Geom::Vector3d.new(vector)
+			vert=Geom::Vector3d.new(0,0,1)
+			vert.length=origin_vector.dot([0,0,1])
+			hori=origin_vector-vert
+			down=Geom::Vector3d.new(0,0,-1)
+			down.length=origin_vector.length*Math.tan(angle)
+			res=origin_vector+down
+			res.length=origin_vector.length
+			return res
+		end
+		# 根据一个不垂直与水平面的向量vector，返回一个向量res使得vector垂直于res且二者与z轴在同一平面内
+		def self.up_perpendicular(vector,normal=[0,0,1])
+			return nil if vector.to_a[0..1].map{|i|i.round(3)} == [0,0]
+			tmp=Geom::Vector3d.new(vector) + normal
+			ortho=vector.cross(tmp)
+			res=ortho.cross(vector)
+			res.length = 1
+			res.length = -res.length unless res.dot(normal)>0
+			return res
+		end
+	end
+	
+	# 在给定画面高的实际尺寸情况下返回Camera类对应的比例尺大小
 	def camera_scale(camera,paper_height=297.mm)
 		raise ArgumentError.new("相机不是平行投影") if camera.perspective?
 		return paper_height / camera.height
 	end
 	
+	# 根据曲线图元和分段数量计算一系列点位与向量，对于特定情况可能有部分分段数量不能正常工作，段时间内没有去优化的计划
 	def self.curve_vectors(curve,nparts)
 		raise ArgumentError.new("Sketchup::Curve expected but #{curve.class} found.") unless curve.is_a?(Sketchup::Curve)
 		raise ArgumentError.new("Fixnum expected but #{nparts.class} found.") unless nparts.is_a?(Fixnum)
@@ -68,27 +94,31 @@ module Cam
 		result
 	end
 	
-	def self.curve_cam_thread(curve,nparts,sec)
+	def self.curve_cam_thread(curve,nparts,sec,down_angle=0.degrees)
 		t=Thread.new{
 			pvs=curve_vectors(curve,nparts)
 			time_unit=sec.to_f/nparts
 			view=Sketchup.active_model.active_view
 			pvs.each{|i|
-				view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
+				vec=Vector.look_down(i[1],down_angle)
+				Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],vec,Vector.up_perpendicular(vec,[0,0,1]))
+				#view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
 				Sketchup.active_model.active_view.refresh
 				sleep(time_unit)
 			}
 		}
 		return(t)
 	end
-	def self.curve_cam_timer(curve,nparts,sec)
+	def self.curve_cam_timer(curve,nparts,sec,down_angle=0.degrees)
 		$cam_curve_cam_timer_pvs=curve_vectors(curve,nparts)
 		time_unit=sec.to_f/nparts
 		view=Sketchup.active_model.active_view
 		$cam_curve_cam_timer_state=0
 		$cam_curve_cam_timer_handle=UI.start_timer(time_unit,true){
 			i=$cam_curve_cam_timer_pvs[$cam_curve_cam_timer_state]
-			Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
+			#Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
+			vec=Vector.look_down(i[1],down_angle)
+			Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],vec,Vector.up_perpendicular(vec,[0,0,1]))
 			$cam_curve_cam_timer_state+=1
 			UI.stop_timer($cam_curve_cam_timer_handle) unless $cam_curve_cam_timer_state < $cam_curve_cam_timer_pvs.length
 		}
