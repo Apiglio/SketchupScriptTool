@@ -218,4 +218,39 @@ module Trans
 		end
 	end
 	
+	module Surface
+		#返回原点坐标和半径
+		def self.triangleOR(pos)
+			x1=pos[0][0]
+			y1=pos[0][1]
+			x2=pos[1][0]
+			y2=pos[1][1]
+			x3=pos[2][0]
+			y3=pos[2][1]
+			x0=((y2-y1)*(y3*y3-y1*y1+x3*x3-x1*x1)-(y3-y1)*(y2*y2-y1*y1+x2*x2-x1*x1))/(2.0*((x3-x1)*(y2-y1)-(x2-x1)*(y3-y1)))
+			y0=((x2-x1)*(x3*x3-x1*x1+y3*y3-y1*y1)-(x3-x1)*(x2*x2-x1*x1+y2*y2-y1*y1))/(2.0*((y3-y1)*(x2-x1)-(y2-y1)*(x3-x1)))
+			r=(x1-x0)*(x1-x0+(y1-y0)*(y1-y0))
+			return [[x0,y0],r]
+		end
+		#输入点坐标数组，返回Geom::PolygonMesh
+		def self.delaunay(pts)
+			nil
+		end
+	end
+	
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
