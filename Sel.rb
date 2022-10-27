@@ -780,6 +780,7 @@ module Sel
 				}
 			}.length
 		end
+		#通过一个给定平面返回通过柔滑的边线能够连接到的所有平面
 		def self.find_surface_by_face(face)
 			surf=[face]
 			len_old=0
@@ -797,7 +798,39 @@ module Sel
 			end
 			return surf
 		end
-		
+		#返回选中表面的轮廓
+		def self.bounds
+			return Sel.sels.grep(Sel::F).map{|f|f.edges}.flatten.uniq.select{|e|e.faces.length==1}
+		end
+		#
+		def self.line_to_base_plane(edg,base_height=0)
+			p1=edg.start.position
+			p2=edg.end.position
+			p1.z=base_height
+			p2.z=base_height
+			return edg.parent.entities.add_line(p1,p2)
+		end
+		private_class_method :line_to_base_plane
+		#表面下拉为固实体
+		def self.to_solid(min_height=10.m)
+			Sketchup.active_model.start_operation("Sel::Surf 创建固实体")
+			begin
+				bs=bounds
+				z_min=bs.map{|e|e.vertices}.flatten.uniq.min{|v|v.position.z}.position.z
+				base_height=z_min-min_height
+				es=[]
+				bs.each{|e|
+					ne=line_to_base_plane(e,base_height)
+					es<<ne
+					e.parent.entities.add_face(e.vertices+ne.vertices.reverse)
+				}
+				#Sel.sels[0].parent.entities.add_face(es.map{|v|v.start.position})
+				es[0].find_faces
+				Sketchup.active_model.commit_operation
+			rescue
+				Sketchup.active_model.abort_operation
+			end
+		end
 	end
 	
 	
