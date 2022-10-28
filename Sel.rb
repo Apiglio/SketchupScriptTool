@@ -812,17 +812,17 @@ module Sel
 		end
 		private_class_method :line_to_base_plane
 		#表面下拉为固实体
-		def self.to_solid(min_height=10.m)
+		def self.to_solid(min_height=0.m)
 			Sketchup.active_model.start_operation("Sel::Surf 创建固实体")
 			begin
 				bs=bounds
-				z_min=bs.map{|e|e.vertices}.flatten.uniq.min{|v|v.position.z}.position.z
+				z_min=bs.map{|e|e.vertices}.flatten.uniq.sort_by{|v|v.position.z}[0].position.z
 				base_height=z_min-min_height
 				es=[]
 				bs.each{|e|
 					ne=line_to_base_plane(e,base_height)
 					es<<ne
-					e.parent.entities.add_face(e.vertices+ne.vertices.reverse)
+					e.parent.entities.add_face((e.vertices+ne.vertices.reverse).uniq)
 				}
 				#Sel.sels[0].parent.entities.add_face(es.map{|v|v.start.position})
 				es[0].find_faces
