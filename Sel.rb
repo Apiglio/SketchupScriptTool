@@ -822,10 +822,11 @@ module Sel
 				bs.each{|e|
 					ne=line_to_base_plane(e,base_height)
 					es<<ne
-					e.parent.entities.add_face((e.vertices+ne.vertices.reverse).uniq)
+					nf=e.parent.entities.add_face((e.vertices+ne.vertices.reverse).uniq)
+					(nf.edges-[e,ne]).each{|vertical_line|vertical_line.soft=true}
 				}
-				#Sel.sels[0].parent.entities.add_face(es.map{|v|v.start.position})
-				es[0].find_faces
+				Sel.sels[0].parent.entities.add_face(es.to_a)
+				#es[0].find_faces
 				Sketchup.active_model.commit_operation
 			rescue
 				Sketchup.active_model.abort_operation
