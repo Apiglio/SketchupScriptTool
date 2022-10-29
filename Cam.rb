@@ -94,6 +94,17 @@ module Cam
 		result
 	end
 	
+	def self.curve_cam_sleep(curve,nparts,sec,down_angle=0.degrees)
+		pvs=curve_vectors(curve,nparts)
+		time_unit=sec.to_f/nparts
+		view=Sketchup.active_model.active_view
+		pvs.each{|i|
+			vec=Vector.look_down(i[1],down_angle)
+			Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],vec,Vector.up_perpendicular(vec,[0,0,1]))
+			Sketchup.active_model.active_view.refresh
+			sleep(time_unit)
+		}
+	end
 	def self.curve_cam_thread(curve,nparts,sec,down_angle=0.degrees)
 		t=Thread.new{
 			pvs=curve_vectors(curve,nparts)
@@ -102,7 +113,6 @@ module Cam
 			pvs.each{|i|
 				vec=Vector.look_down(i[1],down_angle)
 				Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],vec,Vector.up_perpendicular(vec,[0,0,1]))
-				#view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
 				Sketchup.active_model.active_view.refresh
 				sleep(time_unit)
 			}
@@ -116,7 +126,6 @@ module Cam
 		$cam_curve_cam_timer_state=0
 		$cam_curve_cam_timer_handle=UI.start_timer(time_unit,true){
 			i=$cam_curve_cam_timer_pvs[$cam_curve_cam_timer_state]
-			#Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],i[1],[0,0,1])
 			vec=Vector.look_down(i[1],down_angle)
 			Sketchup.active_model.active_view.camera=Sketchup::Camera.new(i[0],vec,Vector.up_perpendicular(vec,[0,0,1]))
 			$cam_curve_cam_timer_state+=1
