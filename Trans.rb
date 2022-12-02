@@ -218,6 +218,40 @@ module Trans
 		end
 	end
 	
+	module Sort
+		#返回给定边线的收尾相连的链条组合，三岔即断开
+		def self.edges(edge_list)
+			backup_list = edge_list.clone
+			list_series = []
+			while not edge_list.empty? do
+				sorted_list = []
+				sorted_list << edge_list.shift
+				vertex_0 = sorted_list[0].start
+				vertex_1 = sorted_list[0].end
+				while true do
+					other_edges = vertex_1.edges & edge_list
+					break unless other_edges.length == 1
+					break if (vertex_1.edges & backup_list).length > 2 #三岔检验
+					needed_edge = other_edges[0]
+					sorted_list.push(needed_edge)
+					vertex_1 = needed_edge.other_vertex(vertex_1)
+					edge_list.delete(needed_edge)
+				end
+				while true do
+					other_edges = vertex_0.edges & edge_list
+					break unless other_edges.length == 1
+					break if (vertex_0.edges & backup_list).length > 2 #三岔检验
+					needed_edge = other_edges[0]
+					sorted_list.unshift(needed_edge)
+					vertex_0 = needed_edge.other_vertex(vertex_0)
+					edge_list.delete(needed_edge)
+				end
+				list_series << sorted_list
+			end
+			return list_series
+		end
+	end
+	
 	module Surface
 		#返回原点坐标和半径
 		def self.triangleOR(pos)
