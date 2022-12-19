@@ -176,9 +176,6 @@ module Cam
 			
 			def onViewChanged(view)
 				#puts "onViewChanged: #{view}"
-<<<<<<< HEAD
-				eye_point=view.eye.position
-=======
 				$apiglio_Cam_LabelRanker_list.each{|text|
 					if text.is_a?(Sketchup::Text) then
 						next if text_world_position(text).nil?
@@ -193,8 +190,6 @@ module Cam
 						#
 					end
 				}
-				
->>>>>>> 583668f (LabelRanker)
 			end
 		end
 		
