@@ -16,14 +16,5 @@ module APUI
 			return(result)
 		end
 	end
-	# 使用案例：
-	# sib = APUI::StoredInputBox.new(
-		# ["导出类型：","保留属性：","容差："],
-		# ['全部','是',:10.mm],
-		# ["选区|全部","是|否",""],
-		# "导出模型"
-	# )
-	# res = sib.execute
-
 	
 end
