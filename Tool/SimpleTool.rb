@@ -31,8 +31,8 @@ module SimpleTool
 		class VolumeTool
 			@@inputbox = APUI::StoredInputBox.new(
 				["图元类型",             "模式",          "阈值", "单位"],
-				['组件和群组',           ">",             1000,   "m³"],
-				["组件|群组|组件和群组", ">|>=|<|<=|==",  "",     "m³|L|mL|in³"],
+				['组件和群组',           ">",             1000,   "平方米(m³)"],
+				["组件|群组|组件和群组", ">|>=|<|<=|==",  "",     "平方米(m³)|公升(L/dm³)|毫升(mL/cm³)|立方毫米(mm³)|立方英寸(in³)|立方英尺(ft³)"],
 				"选择图元"
 			)
 			def activate
@@ -45,10 +45,12 @@ module SimpleTool
 					end
 					threshold = result[2].to_f
 					case result[3]
-						when "m³"  then threshold = threshold.m.m.m
-						when "L"   then threshold = threshold.mm.mm.m
-						when "mL"  then threshold = threshold.mm.mm.mm
-						when "in³" then threshold = threshold
+						when "平方米(m³)"    then threshold = threshold.m.m.m
+						when "公升(L/dm³)"   then threshold = threshold.mm.m.m
+						when "毫升(mL/cm³)"  then threshold = threshold.mm.mm.m
+						when "立方毫米(mm³)" then threshold = threshold.mm.mm.mm
+						when "立方英寸(in³)" then threshold = threshold
+						when "立方英尺(ft³)" then threshold = threshold.feet.feet.feet
 					end
 					Sel.reselect{|e|e.manifold?}
 					operator = result[1].to_sym
