@@ -4,7 +4,18 @@
 
 
 module Arh
-
+	
+	
+	def add_instance_with_line(line,definition)
+		raise ArgumentError.new("") if line[1].parallel?([0,0,1])
+		x_axis = line[1]
+		z_axis = [0,0,1]
+		y_axis = x_axis.cross(z_axis)
+		xscale = x_axis.length / definition.bounds.width
+		trans = Geom::Transformation.axes(line[0],x_axis,y_axis,z_axis) * Geom::Transformation.scaling(xscale,1,1)
+		Sketchup.active_model.entities.add_instance(definition,trans)
+	end
+	
 	module BuildTool
 		def self.line_to_wall(ll,depth,height)
 			ArgumentError.new("Sketchup::Edge is expected but #{ll.class} found.") unless ll.is_a?(Sketchup::Edge)
@@ -24,5 +35,5 @@ module Arh
 			#群组坐标轴需要修改
 		end
 	end
-
+	
 end
