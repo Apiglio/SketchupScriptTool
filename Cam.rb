@@ -19,6 +19,127 @@ module Cam
 		alias va vactive
 	end
 	
+	#平移视角的模块
+	module Pan
+		def self.do_pan(orientation,step=1)
+			mod = Sketchup.active_model
+			cam = mod.active_view.camera
+			vh  = cam.height
+			raise Exception.new('透视投影不能平移') if cam.perspective?
+			vph = mod.active_view.vpheight
+			vpw = mod.active_view.vpwidth
+			plt = mod.active_view.pickray(0,0)[0]
+			prt = mod.active_view.pickray(vpw-1,0)[0]
+			plb = mod.active_view.pickray(0,vph-1)[0]
+			hori_range = (plt-prt).length
+			vert_range = (plt-plb).length
+			up  = cam.up
+			dir = cam.direction
+			eye = cam.eye
+			tar = cam.target
+			hori_vec = dir.cross(up)
+			vert_vec = Geom::Vector3d.new(up)
+			case orientation.downcase
+			when "u"
+				hori_vec.length = 0
+				vert_vec.length = +vert_range*step
+			when "d"
+				hori_vec.length = 0
+				vert_vec.length = -vert_range*step
+			when "l"
+				hori_vec.length = -hori_range*step
+				vert_vec.length = 0
+			when "r"
+				hori_vec.length = +hori_range*step
+				vert_vec.length = 0
+			end
+			new_eye = eye + hori_vec + vert_vec
+			new_tar = tar + hori_vec + vert_vec
+			new_camera = Sketchup::Camera.new(new_eye,new_tar,up,false)
+			new_camera.height = vh
+			mod.active_view.camera = new_camera
+		end
+		#private_class_method :do_pan
+		def self.l()
+			self.do_pan("l")
+		end
+		def self.r()
+			self.do_pan("r")
+		end
+		def self.u()
+			self.do_pan("u")
+		end
+		def self.d()
+			self.do_pan("d")
+		end
+		# 批量导出分幅的画面
+		def self.pan_export(count_cell=3,path)
+			mod = Sketchup.active_model
+			cam = mod.active_view.camera
+			vh  = cam.height
+			cam.height = vh/count_cell.to_f
+			self.do_pan("l",(count_cell+1)/2.0)
+			self.do_pan("u",(count_cell-1)/2.0)
+			for i in 0..count_cell-1 do
+				for j in 0..count_cell-1 do
+					self.do_pan("r",1)
+					mod.active_view.write_image(path+"\\ImageCell[#{i},#{j}].png")
+				end
+				self.do_pan("d",1)
+				self.do_pan("l",count_cell)
+			end
+			self.do_pan("r",(count_cell+1)/2.0)
+			self.do_pan("u",(count_cell+1)/2.0)
+			cam.height = vh
+		end
+	end
+	
+	#按照比例尺设置视图
+	module Scale
+	
+	# 在给定画面高的实际尺寸情况下返回Camera类对应的比例尺大小
+		def self.camera_scale(camera,paper_height=297.mm)
+			raise ArgumentError.new("相机不是平行投影") if camera.perspective?
+			return paper_height / camera.height
+		end
+		def self.paper_size(name)
+			case name
+				when "A0" then return [1189,841]
+				when "A1" then return [841,594]
+				when "A2" then return [594,420]
+				when "A3" then return [420,297]
+				when "A4" then return [297,210]
+				when "A5" then return [210,148]
+				when "A6" then return [148,105]
+				else return name
+			end
+		end
+		#确定比例尺的顶视图
+		def self.top(scale,paper="A3",margin=0)
+			mod = Sketchup.active_model
+			cam = mod.active_view.camera
+			vph = mod.active_view.vpheight
+			vpw = mod.active_view.vpwidth
+			#计算图幅像素大小
+			drawing_size = self.paper_size(paper)
+			vpr=vpw/vph.to_f
+			horizontal = vpr>=1 #判断横向还是纵向
+			drawing_size.reverse! unless horizontal
+			psheight = drawing_size[0].mm - 2*margin
+			pswidth  = drawing_size[1].mm - 2*margin
+			raise Exception.new('边缘尺寸过大') if psheight<0 or pswidth<0 or psheight * pswidth == 0
+			psr=pswidth/psheight.to_f
+			cam.perspective = false
+			if psr<=vpr then
+				cam.height = psheight * vph / vpw.to_f / scale.to_f
+			else
+				cam.height = pswidth / scale.to_f
+			end
+		end
+
+	end
+	
+	
 	module Vector
 		def self.look_down(vector,angle)
 			return nil if vector.to_a[0..1].map{|i|i.round(3)} == [0,0]
@@ -42,12 +163,6 @@ module Cam
 			res.length = -res.length unless res.dot(normal)>0
 			return res
 		end
-	end
-	
-	# 在给定画面高的实际尺寸情况下返回Camera类对应的比例尺大小
-	def camera_scale(camera,paper_height=297.mm)
-		raise ArgumentError.new("相机不是平行投影") if camera.perspective?
-		return paper_height / camera.height
 	end
 	
 	# 根据曲线图元和分段数量计算一系列点位与向量，对于特定情况可能有部分分段数量不能正常工作，段时间内没有去优化的计划
