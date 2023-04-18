@@ -24,21 +24,16 @@ module Cam
 		def self.do_pan(orientation,step=1)
 			mod = Sketchup.active_model
 			cam = mod.active_view.camera
-			vh  = cam.height
 			raise Exception.new('透视投影不能平移') if cam.perspective?
-			vph = mod.active_view.vpheight
-			vpw = mod.active_view.vpwidth
-			plt = mod.active_view.pickray(0,0)[0]
-			prt = mod.active_view.pickray(vpw-1,0)[0]
-			plb = mod.active_view.pickray(0,vph-1)[0]
-			hori_range = (plt-prt).length
-			vert_range = (plt-plb).length
+			vh  = cam.height
 			up  = cam.up
 			dir = cam.direction
 			eye = cam.eye
 			tar = cam.target
 			hori_vec = dir.cross(up)
 			vert_vec = Geom::Vector3d.new(up)
+			vert_range = cam.height
+			hori_range = vert_range * mod.active_view.vpwidth.to_f / mod.active_view.vpheight.to_f
 			case orientation.downcase
 			when "u"
 				hori_vec.length = 0
@@ -73,7 +68,7 @@ module Cam
 			self.do_pan("d")
 		end
 		# 批量导出分幅的画面
-		def self.pan_export(count_cell=3,path)
+		def self.pan_export(path,count_cell=3)
 			mod = Sketchup.active_model
 			cam = mod.active_view.camera
 			vh  = cam.height
