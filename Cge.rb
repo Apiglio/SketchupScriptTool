@@ -179,6 +179,23 @@ module Cge
 		return list
 	end
 	
+	#给定一个图元，向下查找[entity,InstancePath]
+	def self.find_paths_downward(entity,instance_path=[],init_res=[])
+		res = init_res
+		case entity
+		when Sketchup::Group
+			entity.definition.entities.each{|ent|
+				res=find_paths_downward(ent,instance_path+[entity],res)
+			}
+		when Sketchup::ComponentInstance
+			entity.definition.entities.each{|ent|
+				res=find_paths_downward(ent,instance_path+[entity],res)
+			}
+		else
+			res.push(instance_path+[entity])
+		end
+		return res
+	end
 
 	def self.build_connective_group(arr)
 		Sketchup.active_model.start_operation("非接触组件创建",true)
@@ -773,6 +790,132 @@ module Cge
 		end
 		
 	end
+	
+
+	module PlaceTool
+		class AxesInstance
+			STATE_Origin = 0 #未选择原点
+			STATE_X_AXIS = 1 #设置x轴方向
+			STATE_Y_AXIS = 2 #设置y轴方向
+			STATE_Z_AXIS = 3 #设置z轴方向
+			STATE_SCALES = 4 #设置尺寸大小
+			def activate
+				@point1 = [0,0,0] #原点
+				@point2 = [0,0,0] #始终表示鼠标指针的位置
+				@x_axis = Geom::Vector3d.new([1,0,0])
+				@y_axis = Geom::Vector3d.new([0,1,0])
+				@z_axis = Geom::Vector3d.new([0,0,1])
+				@trans  = Geom::Transformation.new
+				@state  = AxesInstance::STATE_Origin
+				defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件")
+				raise Exception.new('未找到对应组件') if defname==[""]
+				@defin  = Sketchup.active_model.definitions[defname[0]]
+			end
+			def update_axes
+				vec = @point2 - @point1
+				x_len = @x_axis.dot(vec)/@x_axis.length/@defin.bounds.width
+				y_len = @y_axis.dot(vec)/@y_axis.length/@defin.bounds.height
+				z_len = @z_axis.dot(vec)/@z_axis.length/@defin.bounds.depth
+				x_len = 1 unless x_len.abs>0.001
+				@x_axis.length = x_len
+				y_len = 1 unless y_len.abs>0.001
+				@y_axis.length = y_len
+				z_len = 1 unless z_len.abs>0.001
+				@z_axis.length = z_len
+				ta = Geom::Transformation.axes(@point1,@x_axis,@y_axis,@z_axis)
+				ts = Geom::Transformation.scaling(x_len,y_len,z_len)
+				@trans = ta*ts
+			end
+			def do_place
+				Sketchup.active_model.active_entities.add_instance(@defin,@trans)
+			end
+			def onLButtonUp(flags,x,y,view)
+				case @state
+				when AxesInstance::STATE_Origin
+					ip = view.inputpoint(x,y)
+					@point1 = ip.position
+					@state = STATE_SCALES
+				when AxesInstance::STATE_X_AXIS
+					ip = view.inputpoint(x,y)
+					tmp = ip.position
+					# 检测向量有效性
+					@x_axis = tmp - @point1
+					@state = STATE_SCALES
+				when AxesInstance::STATE_Y_AXIS
+					ip = view.inputpoint(x,y)
+					tmp = ip.position
+					# 检测向量有效性
+					@y_axis = tmp - @point1
+					@state = STATE_SCALES
+				when AxesInstance::STATE_Z_AXIS
+					ip = view.inputpoint(x,y)
+					tmp = ip.position
+					# 检测向量有效性
+					@z_axis = tmp - @point1
+					@state = STATE_SCALES
+				when AxesInstance::STATE_SCALES
+					ip = view.inputpoint(x,y)
+					tmp = ip.position
+					do_place()
+					@state = STATE_Origin
+				end
+			end
+			def onCancel(reason, view)
+				@state = STATE_Origin
+			end
+			def onMouseMove(flags,x,y,view)
+				ip = view.inputpoint(x,y)
+				@point2 = ip.position
+				case @state
+				when AxesInstance::STATE_Origin
+					@point1 = @point2
+					update_axes()
+				when AxesInstance::STATE_X_AXIS
+					#
+				when AxesInstance::STATE_Y_AXIS
+					#
+				when AxesInstance::STATE_Z_AXIS
+					#
+				when AxesInstance::STATE_SCALES
+					update_axes()
+					
+				end
+				draw(view)
+			end
+			def getExtents
+				bb = Geom::BoundingBox.new
+				pts = 0.upto(7).map{|i|@defin.bounds.corner(i)}
+				bb.add(pts)
+				return bb
+			end
+			def draw_entity(view,entity,trans)
+				paths = Cge.find_paths_downward(entity)
+				paths.select!{|path|
+					path.last.is_a?(Sketchup::Edge)
+				}
+				paths.reject!{|ent|ent.last.hidden?}
+				paths.each{|path|
+					v1 = path.last.start.position
+					v2 = path.last.end.position
+					tr = Sketchup::InstancePath.new(path).transformation
+					view.draw_polyline(v1.transform(trans*tr),v2.transform(trans*tr))
+				}
+			end
+			def draw(view)
+				# return if @state == STATE_Origin
+				view.drawing_color="red"
+				view.line_width=2
+				# trans = Geom::Transformation.axes(@point1,@x_axis,@y_axis,@z_axis)
+				# $last_axes_instance_trans = Geom::Transformation.new(@trans)
+				@defin.entities.each{|ent|
+					draw_entity(view,ent,@trans)
+				}
+				view.draw_points(@point2,6,2,"black")
+				view.invalidate
+			end
+		end
+	end
+	
 	
 	
 	#工具栏命令初始化
