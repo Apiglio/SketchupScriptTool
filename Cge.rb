@@ -306,48 +306,58 @@ module Cge
 			else return nil end
 		end
 		private_class_method :get_the_only_sel
-		def self.window_show
+		def self.show_window
+			@viewerWindow = UI::HtmlDialog.new(
+			{
+			  :dialog_title => "Apiglio Cge MovTool",
+			  :preferences_key => "- Apiglio -",
+			  :scrollable => true,
+			  :resizable => true,
+			  :width => 100,
+			  :height => 200,
+			  :left => 100,
+			  :top => 100,
+			  :min_width => 50,
+			  :min_height => 50,
+			  :max_width =>400,
+			  :max_height =>600,
+			  :style => UI::HtmlDialog::STYLE_UTILITY
+			})
+			_html=File.read(__dir__+"/UI/MovTool.html")
+
+			@viewerWindow.add_action_callback("x_positive"){|action_context,value|
+				x_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("x_negative"){|action_context,value|
+				x_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("y_positive"){|action_context,value|
+				y_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("y_negative"){|action_context,value|
+				y_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("z_positive"){|action_context,value|
+				z_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("z_negative"){|action_context,value|
+				z_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
+			@viewerWindow.add_action_callback("set_move_unit"){|action_context,value|
+				@move_unit=value.to_f.mm}
+			@viewerWindow.add_action_callback("get_move_unit"){|action_context|
+				return @move_unit.to_mm.to_s}
+			@viewerWindow.add_action_callback("set_move_copy"){|action_context,value|
+				@move_copy=value}
+			@viewerWindow.add_action_callback("get_move_copy"){|action_context|
+				return @move_copy}
+			@viewerWindow.add_action_callback("value_update"){|action_context|
+				@viewerWindow.execute_script("dialogInit(#{@move_copy},#{@move_unit.to_mm.to_s})")}
+			@viewerWindow.set_html(_html)
 			@viewerWindow.show
 		end
-		
-		@viewerWindow = UI::HtmlDialog.new(
-		{
-		  :dialog_title => "Apiglio Cge MovTool",
-		  :preferences_key => "- Apiglio -",
-		  :scrollable => true,
-		  :resizable => true,
-		  :width => 100,
-		  :height => 200,
-		  :left => 100,
-		  :top => 100,
-		  :min_width => 50,
-		  :min_height => 50,
-		  :max_width =>400,
-		  :max_height =>600,
-		  :style => UI::HtmlDialog::STYLE_UTILITY
-		})
-		_html=File.read(__dir__+"/UI/MovTool.html")
 
-		@viewerWindow.add_action_callback("x_positive"){|action_context,value|
-			x_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("x_negative"){|action_context,value|
-			x_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("y_positive"){|action_context,value|
-			y_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("y_negative"){|action_context,value|
-			y_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("z_positive"){|action_context,value|
-			z_move(get_the_only_sel,@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("z_negative"){|action_context,value|
-			z_move(get_the_only_sel,-@move_unit) unless get_the_only_sel.nil?}
-		@viewerWindow.add_action_callback("set_move_unit"){|action_context,value|
-			@move_unit=value.to_f.mm}
-		@viewerWindow.add_action_callback("set_move_copy"){|action_context,value|
-			@move_copy=value}
 		
-		@viewerWindow.set_html(_html)
-		@viewerWindow.show		
-		
+		class OrthoMov
+			def activate
+				MoveTool.show_window()
+				Sketchup.active_model.select_tool(nil)
+			end
+		end
 		
 	end
 	

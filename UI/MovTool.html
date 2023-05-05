@@ -9,11 +9,15 @@
 	function checkboxChange(){
 		sketchup.set_move_copy(document.getElementById("checkbox1").checked)
 	}
+	function dialogInit(copy_mode,copy_unit){
+		document.getElementById("checkbox1").checked = copy_mode
+		document.getElementById("inputbox").value = copy_unit
+	}
 	</script>
 </head>
-<body>
+<body onload="sketchup.value_update()">
 	移动单位：
-	<input id="inputbox" style="width:60;height:20" onkeyup="inputChange()" value="100">毫米
+	<input id="inputbox" style="width:60;height:20" onkeyup="inputChange()">毫米
 	<br><br>
 	<button style="width:30;height:30" onclick="sketchup.x_positive()">X+
 	</button>
