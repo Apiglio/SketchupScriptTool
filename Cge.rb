@@ -804,98 +804,190 @@ module Cge
 
 	module PlaceTool
 		class AxesInstance
-			STATE_Origin = 0 #未选择原点
-			STATE_X_AXIS = 1 #设置x轴方向
-			STATE_Y_AXIS = 2 #设置y轴方向
-			STATE_Z_AXIS = 3 #设置z轴方向
-			STATE_SCALES = 4 #设置尺寸大小
-			def activate
-				@point1 = [0,0,0] #原点
-				@point2 = [0,0,0] #始终表示鼠标指针的位置
+			STATE_DEFAULT = 0 #未选择原点或设置尺寸大小
+			STATE_X_AXIS  = 1 #设置x轴方向
+			STATE_Y_AXIS  = 2 #设置y轴方向
+			STATE_Z_AXIS  = 3 #设置z轴方向
+			#STATE_SCALES = 4 #设置尺寸大小
+			STATE_XY_AXIS = 5 #设置xy轴方向
+			STATE_XZ_AXIS = 6 #设置xz轴方向
+			STATE_YZ_AXIS = 7 #设置yz轴方向
+			def initialize(min_scale=1.mm,min_angle=1.degrees)
+				@scale_limit = min_scale
+				@angle_limit = min_angle
+			end
+			def activate()
+				@point1 = Geom::Point3d.new([0,0,0]) #原点
+				@point2 = Geom::Point3d.new([0,0,0]) #始终表示鼠标指针的位置
+				@has_origin = false
 				@x_axis = Geom::Vector3d.new([1,0,0])
 				@y_axis = Geom::Vector3d.new([0,1,0])
 				@z_axis = Geom::Vector3d.new([0,0,1])
 				@trans  = Geom::Transformation.new
-				@state  = AxesInstance::STATE_Origin
+				@state  = STATE_DEFAULT
 				defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件")
 				raise Exception.new('未找到对应组件') if defname==[""]
 				@defin  = Sketchup.active_model.definitions[defname[0]]
+				@x_axis_rs = Geom::Vector3d.new(@x_axis)
+				@y_axis_rs = Geom::Vector3d.new(@y_axis)
+				@z_axis_rs = Geom::Vector3d.new(@z_axis)
+				@x_axis_rs.length = @defin.bounds.width
+				@y_axis_rs.length = @defin.bounds.height
+				@z_axis_rs.length = @defin.bounds.depth
+				save_args()
+				@xaxis_shift = false
+				@yaxis_ctrl  = false
+				@zaxis_alt   = false
 			end
-			def update_axes
+			def update_axes()
 				vec = @point2 - @point1
-				x_len = @x_axis.dot(vec)/@x_axis.length/@defin.bounds.width
-				y_len = @y_axis.dot(vec)/@y_axis.length/@defin.bounds.height
-				z_len = @z_axis.dot(vec)/@z_axis.length/@defin.bounds.depth
-				x_len = 1 unless x_len.abs>0.001
-				@x_axis.length = x_len
-				y_len = 1 unless y_len.abs>0.001
-				@y_axis.length = y_len
-				z_len = 1 unless z_len.abs>0.001
-				@z_axis.length = z_len
+				case @state
+				when STATE_DEFAULT
+					x_len = @x_axis.dot(vec) / @x_axis.length
+					y_len = @y_axis.dot(vec) / @y_axis.length
+					z_len = @z_axis.dot(vec) / @z_axis.length
+					x_len = @defin.bounds.width  unless x_len.abs > @scale_limit
+					y_len = @defin.bounds.height unless y_len.abs > @scale_limit
+					z_len = @defin.bounds.depth  unless z_len.abs > @scale_limit
+					if @has_origin then
+						@x_axis_rs.length = x_len
+						@y_axis_rs.length = y_len
+						@z_axis_rs.length = z_len
+					end
+					x_len /= @defin.bounds.width
+					y_len /= @defin.bounds.height
+					z_len /= @defin.bounds.depth
+					if @has_origin then
+						@x_axis.length = x_len
+						@y_axis.length = y_len
+						@z_axis.length = z_len
+					end
+				else
+					return nil unless @has_origin
+					case @state
+					when STATE_X_AXIS
+						@x_axis_rs = vec
+						@x_axis = @x_axis_rs.clone
+						@x_axis.length = @x_axis_rs.length / @defin.bounds.width
+					when STATE_Y_AXIS
+						@y_axis_rs = vec
+						@y_axis = @y_axis_rs.clone
+						@y_axis.length = @y_axis_rs.length / @defin.bounds.height
+					when STATE_Z_AXIS
+						@z_axis_rs = vec
+						@z_axis = @z_axis_rs.clone
+						@z_axis.length = @z_axis_rs.length / @defin.bounds.depth
+					when STATE_YZ_AXIS
+						@x_axis_rs = vec - @y_axis_rs - @z_axis_rs
+						@x_axis = @x_axis_rs.clone
+						@x_axis.length = @x_axis_rs.length / @defin.bounds.width
+					when STATE_XZ_AXIS
+						@y_axis_rs = vec - @x_axis_rs - @z_axis_rs
+						@y_axis = @y_axis_rs.clone
+						@y_axis.length = @y_axis_rs.length / @defin.bounds.height
+					when STATE_XY_AXIS
+						@z_axis_rs = vec - @x_axis_rs - @y_axis_rs
+						@z_axis = @z_axis_rs.clone
+						@z_axis.length = @z_axis_rs.length / @defin.bounds.depth
+					end
+					x_len = @x_axis.length
+					y_len = @y_axis.length
+					z_len = @z_axis.length
+				end
 				ta = Geom::Transformation.axes(@point1,@x_axis,@y_axis,@z_axis)
 				ts = Geom::Transformation.scaling(x_len,y_len,z_len)
 				@trans = ta*ts
 			end
-			def do_place
+			def save_args()
+				@preserve_axes = [@point1,@x_axis_rs,@y_axis_rs,@z_axis_rs,@x_axis,@y_axis,@z_axis]
+			end
+			def reset_args()
+				@point1,@x_axis_rs,@y_axis_rs,@z_axis_rs,@x_axis,@y_axis,@z_axis = *@preserve_axes
+			end
+			def update_state()
+				t = true
+				f = false
+				case [@xaxis_shift,@yaxis_ctrl,@zaxis_alt]
+					when [t,t,t] then
+						@state = STATE_DEFAULT
+						@x_axis = Geom::Vector3d.new([1,0,0])
+						@y_axis = Geom::Vector3d.new([0,1,0])
+						@z_axis = Geom::Vector3d.new([0,0,1])
+						save_args()
+					when [t,t,f] then @state = STATE_XY_AXIS
+					when [t,f,t] then @state = STATE_XZ_AXIS
+					when [t,f,f] then @state = STATE_X_AXIS
+					when [f,t,t] then @state = STATE_YZ_AXIS
+					when [f,t,f] then @state = STATE_Y_AXIS
+					when [f,f,t] then @state = STATE_Z_AXIS
+					when [f,f,f] then @state = STATE_DEFAULT
+				end
+				reset_args()
+			end
+			def do_place()
+				Sketchup.active_model.start_operation("自定义轴放置组件")
 				Sketchup.active_model.active_entities.add_instance(@defin,@trans)
+				Sketchup.active_model.commit_operation()
 			end
 			def onLButtonUp(flags,x,y,view)
+				ip = view.inputpoint(x,y)
+				tmp = ip.position
 				case @state
-				when AxesInstance::STATE_Origin
-					ip = view.inputpoint(x,y)
-					@point1 = ip.position
-					@state = STATE_SCALES
-				when AxesInstance::STATE_X_AXIS
-					ip = view.inputpoint(x,y)
-					tmp = ip.position
-					# 检测向量有效性
-					@x_axis = tmp - @point1
-					@state = STATE_SCALES
-				when AxesInstance::STATE_Y_AXIS
-					ip = view.inputpoint(x,y)
-					tmp = ip.position
-					# 检测向量有效性
-					@y_axis = tmp - @point1
-					@state = STATE_SCALES
-				when AxesInstance::STATE_Z_AXIS
-					ip = view.inputpoint(x,y)
-					tmp = ip.position
-					# 检测向量有效性
-					@z_axis = tmp - @point1
-					@state = STATE_SCALES
-				when AxesInstance::STATE_SCALES
-					ip = view.inputpoint(x,y)
-					tmp = ip.position
+				when STATE_DEFAULT
+					if @has_origin then
+						do_place()
+						@has_origin = false
+					else
+						@point1 = tmp
+						@has_origin = true
+						save_args()
+					end
+				when STATE_X_AXIS,STATE_Y_AXIS,STATE_Z_AXIS
+					@state = STATE_DEFAULT
+					save_args()
+				when STATE_XY_AXIS,STATE_XZ_AXIS,STATE_YZ_AXIS
+					@state = STATE_DEFAULT
 					do_place()
-					@state = STATE_Origin
+					@has_origin = false
 				end
 			end
 			def onCancel(reason, view)
-				@state = STATE_Origin
+				@has_origin = false
 			end
 			def onMouseMove(flags,x,y,view)
 				ip = view.inputpoint(x,y)
 				@point2 = ip.position
 				case @state
-				when AxesInstance::STATE_Origin
-					@point1 = @point2
-					update_axes()
-				when AxesInstance::STATE_X_AXIS
-					#
-				when AxesInstance::STATE_Y_AXIS
-					#
-				when AxesInstance::STATE_Z_AXIS
-					#
-				when AxesInstance::STATE_SCALES
-					update_axes()
-					
+				when STATE_DEFAULT
+					@point1 = @point2 unless @has_origin
 				end
+				update_axes()
 				draw(view)
+			end
+			def onKeyDown(key,repeat,flags,view)
+				case key
+					when VK_SHIFT   then @xaxis_shift = true
+					when VK_CONTROL then @yaxis_ctrl  = true
+					when VK_ALT     then @zaxis_alt   = true
+				end
+				update_state()
+				if key == VK_ALT then return true else return false end
+			end
+			def onKeyUp(key,repeat,flags,view)
+				case key
+					when VK_SHIFT   then @xaxis_shift = false
+					when VK_CONTROL then @yaxis_ctrl  = false
+					when VK_ALT     then @zaxis_alt   = false
+				end
+				update_state()
+				if key == VK_ALT then return true else return false end
 			end
 			def getExtents
 				bb = Geom::BoundingBox.new
 				pts = 0.upto(7).map{|i|@defin.bounds.corner(i)}
 				bb.add(pts)
+				bb.add(@point2)
+				bb.add(@point1)
 				return bb
 			end
 			def draw_entity(view,entity,trans)
@@ -912,15 +1004,74 @@ module Cge
 				}
 			end
 			def draw(view)
-				# return if @state == STATE_Origin
-				view.drawing_color="red"
+				if @has_origin then
+				case @state
+				when STATE_X_AXIS
+					view.drawing_color="red"
+					view.line_width=5
+					view.draw_polyline(@point1,@point2)
+				when STATE_Y_AXIS
+					view.drawing_color="green"
+					view.line_width=5
+					view.draw_polyline(@point1,@point2)
+				when STATE_Z_AXIS
+					view.drawing_color="blue"
+					view.line_width=5
+					view.draw_polyline(@point1,@point2)
+				when STATE_XY_AXIS
+					px  = @point1 + @x_axis_rs
+					py  = @point1 + @y_axis_rs
+					pxy = @point1 + @x_axis_rs + @y_axis_rs
+					view.drawing_color="yellow"
+					view.line_width=5
+					view.draw_polyline(@point1,px,pxy,py,@point1)
+					view.drawing_color="blue"
+					view.line_width=5
+					view.draw_polyline(pxy,@point2)
+				when STATE_XZ_AXIS
+					px  = @point1 + @x_axis_rs
+					pz  = @point1 + @z_axis_rs
+					pxz = @point1 + @x_axis_rs + @z_axis_rs
+					view.drawing_color="violet"
+					view.line_width=5
+					view.draw_polyline(@point1,px,pxz,pz,@point1)
+					view.drawing_color="green"
+					view.line_width=5
+					view.draw_polyline(pxz,@point2)
+				when STATE_YZ_AXIS
+					py  = @point1 + @y_axis_rs
+					pz  = @point1 + @z_axis_rs
+					pyz = @point1 + @y_axis_rs + @z_axis_rs
+					view.drawing_color="cyan"
+					view.line_width=5
+					view.draw_polyline(@point1,py,pyz,pz,@point1)
+					view.drawing_color="red"
+					view.line_width=5
+					view.draw_polyline(pyz,@point2)
+				end
+				end
+				view.drawing_color="gray"
 				view.line_width=2
-				# trans = Geom::Transformation.axes(@point1,@x_axis,@y_axis,@z_axis)
-				# $last_axes_instance_trans = Geom::Transformation.new(@trans)
 				@defin.entities.each{|ent|
 					draw_entity(view,ent,@trans)
 				}
-				view.draw_points(@point2,6,2,"black")
+				view.draw_points(@point1,6,2,"black")
+				view.draw_points(@point2,6,1,"black")
+				tip_vice = "|Shift键 = 调整组件x轴。|Ctrl键 = 调整组件y轴。|Alt键 = 调整组件z轴。|两键组合 = 固定两轴模式。|三键组合 = 重置组件轴方向。"
+				case @state
+					when STATE_DEFAULT
+						if @has_origin then
+							Sketchup.set_status_text("点击确定对角线端点。"+tip_vice,SB_PROMPT)
+						else
+							Sketchup.set_status_text("点击设置组件放置原点。",SB_PROMPT)
+						end
+					when STATE_X_AXIS  then Sketchup.set_status_text("设置组件x轴。"+tip_vice,SB_PROMPT)
+					when STATE_Y_AXIS  then Sketchup.set_status_text("设置组件y轴。"+tip_vice,SB_PROMPT)
+					when STATE_Z_AXIS  then Sketchup.set_status_text("设置组件z轴。"+tip_vice,SB_PROMPT)
+					when STATE_XY_AXIS then Sketchup.set_status_text("固定组件xy轴放置组件。"+tip_vice,SB_PROMPT)
+					when STATE_XZ_AXIS then Sketchup.set_status_text("固定组件xz轴放置组件。"+tip_vice,SB_PROMPT)
+					when STATE_YZ_AXIS then Sketchup.set_status_text("固定组件yz轴放置组件。"+tip_vice,SB_PROMPT)
+				end
 				view.invalidate
 			end
 		end
