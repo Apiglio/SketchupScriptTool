@@ -826,6 +826,10 @@ module Cge
 				@trans  = Geom::Transformation.new
 				@state  = STATE_DEFAULT
 				defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件")
+				if not defname then
+					Sketchup.active_model.select_tool(nil)
+					return defname
+				end
 				raise Exception.new('未找到对应组件') if defname==[""]
 				@defin  = Sketchup.active_model.definitions[defname[0]]
 				@x_axis_rs = Geom::Vector3d.new(@x_axis)
@@ -990,18 +994,37 @@ module Cge
 				bb.add(@point1)
 				return bb
 			end
-			def draw_entity(view,entity,trans)
+			def draw_entity(view,entity,trans,face_color="gray",edge_color="red")
 				paths = Cge.find_paths_downward(entity)
-				paths.select!{|path|
+				paths.reject!{|ent|ent.last.hidden?}
+				edge_paths=paths.clone
+				face_paths=paths
+				face_paths.select!{|path|
+					path.last.is_a?(Sketchup::Face)
+				}
+				edge_paths.select!{|path|
 					path.last.is_a?(Sketchup::Edge)
 				}
-				paths.reject!{|ent|ent.last.hidden?}
-				paths.each{|path|
-					v1 = path.last.start.position
-					v2 = path.last.end.position
-					tr = Sketchup::InstancePath.new(path).transformation
-					view.draw_polyline(v1.transform(trans*tr),v2.transform(trans*tr))
-				}
+				if face_color.downcase != "none" then
+					view.drawing_color=face_color
+					face_paths.each{|path|
+						face = path.last
+						ms = face.mesh
+						vs = ms.polygons.map{|tri|tri.map{|idx|ms.point_at(idx.abs)}}
+						tr = trans * Sketchup::InstancePath.new(path).transformation
+						vs.map!{|tri|tri.map{|v|tr*v}}
+						view.draw(GL_TRIANGLES,vs.flatten,normals:[face.normal]*vs.flatten.length)
+					}
+				end
+				if edge_color.downcase != "none" then
+					view.drawing_color=edge_color
+					edge_paths.each{|path|
+						v1 = path.last.start.position
+						v2 = path.last.end.position
+						tr = Sketchup::InstancePath.new(path).transformation
+						view.draw_polyline(v1.transform(trans*tr),v2.transform(trans*tr))
+					}
+				end
 			end
 			def draw(view)
 				if @has_origin then
@@ -1050,10 +1073,11 @@ module Cge
 					view.draw_polyline(pyz,@point2)
 				end
 				end
-				view.drawing_color="gray"
+				#view.drawing_color="gray"
+				#view.drawing_color="red"
 				view.line_width=2
 				@defin.entities.each{|ent|
-					draw_entity(view,ent,@trans)
+					draw_entity(view,ent,@trans,"gray","red")
 				}
 				view.draw_points(@point1,6,2,"black")
 				view.draw_points(@point2,6,1,"black")
