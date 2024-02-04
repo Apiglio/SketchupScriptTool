@@ -3,12 +3,13 @@
 #通过组件或组件定义返回所有相关路径
 
 class InstancePathTree
-	attr_accessor :children, :parent, :instance
+	attr_accessor :children, :parent, :instance, :instpath
 	
 	def initialize(instance=nil)
 		@parent = nil
 		@children = []
 		@instance = instance
+		@instpath = [] # 只在根节点中记录，用于check_subordinate
 	end
 	
 	def add_child(instance)
@@ -32,7 +33,7 @@ class InstancePathTree
 			child.recur_paths(paths,cpath)
 		}
 	end
-	private_methods :recur_paths
+	protected :recur_paths
 	
 	def paths
 		result=[]
@@ -40,7 +41,16 @@ class InstancePathTree
 		return result.map{|path|Sketchup::InstancePath.new(path.compact)}
 	end
 	
+	def subordinates
+		root_path = @instpath.to_a
+		result=[]
+		recur_paths(result,[])
+		#return result.map{|path|root_path+path.compact.reverse}
+		return result.map{|path|Sketchup::InstancePath.new(root_path+path.compact.reverse)}
+	end
+	
 	class << self
+		
 		def recur_find_parent(node,inst)
 			return nil unless inst.parent.is_a? Sketchup::ComponentDefinition
 			inst.parent.instances.each{|pinst|
@@ -48,7 +58,7 @@ class InstancePathTree
 				recur_find_parent(pnode,pinst)
 			}
 		end
-		private_methods :recur_find_parent
+		private :recur_find_parent
 		
 		# 返回图元的所有相关路径
 		def check_instance(inst)
@@ -68,6 +78,62 @@ class InstancePathTree
 			}
 			return result
 		end
+		
+		def recur_find_subordinate(node)
+			entity = node.instance
+			if entity.respond_to?(:definition) then
+				entity.definition.entities.each{|ent|
+					child = node.add_child(ent)
+					recur_find_subordinate(child)
+				}
+			elsif node.instance.nil? then
+				Sketchup.active_model.entities.each{|ent|
+					child = node.add_child(ent)
+					recur_find_subordinate(child)
+				}
+			end
+		end
+		private :recur_find_subordinate
+		
+		# 返回path之下的所有path
+		def check_subordinate_instancepath(instance_path)
+			instance_path=[] if instance_path.nil?
+			instpath = Sketchup::InstancePath.new(instance_path)
+			if instpath.empty? then
+				result = InstancePathTree.new(nil)
+				result.instpath = []
+			else
+				instpath_ary = instpath.to_a
+				result = InstancePathTree.new(instpath_ary.pop)
+				result.instpath = instpath_ary
+			end
+			recur_find_subordinate(result)
+			return result
+		end
+		private :check_subordinate_instancepath
+		
+		# 返回definition之下的所有path
+		def check_subordinate_definition(definition)
+			instpath=[] if instpath.nil?
+			raise ArgumentError.new("参数definition必须要有entities成员。") unless definition.respond_to?(:entities)
+			result = InstancePathTree.new(nil)
+			result.instpath = []	
+			definition.entities.each{|ent|
+				child = result.add_child(ent)
+				recur_find_subordinate(child)
+			}
+			return result
+		end
+		private :check_subordinate_definition
+		
+		def check_subordinate(instpath_or_definition)
+			if instpath_or_definition.respond_to?(:entities) then
+				check_subordinate_definition(instpath_or_definition)
+			else
+				check_subordinate_instancepath(instpath_or_definition)
+			end
+		end
+		
 	end
 end
 
