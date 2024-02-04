@@ -1,6 +1,10 @@
-#InstancePathHelper
-#Apiglio
-#通过组件或组件定义返回所有相关路径
+# InstancePathHelper
+# Apiglio
+# 通过组件或组件定义返回所有相关路径
+# 相关的路径（sibling）指修改指定图元时会一并修改的其他图元路径，所有路径以相同的图元结尾
+# "sibling" means instance path that changes when a instance (or drawing element) changes.
+# 其下的路径（subordinate）指绘制一个实例路径时需要向下绘制的所有包含的实例路径。
+# "subordinate" means every instance path need to be drawn when drawing a instance path.
 
 class InstancePathTree
 	attr_accessor :children, :parent, :instance, :instpath
@@ -40,12 +44,12 @@ class InstancePathTree
 		recur_paths(result,[])
 		return result.map{|path|Sketchup::InstancePath.new(path.compact)}
 	end
+	alias :siblings :paths
 	
 	def subordinates
 		root_path = @instpath.to_a
 		result=[]
 		recur_paths(result,[])
-		#return result.map{|path|root_path+path.compact.reverse}
 		return result.map{|path|Sketchup::InstancePath.new(root_path+path.compact.reverse)}
 	end
 	
@@ -67,6 +71,7 @@ class InstancePathTree
 			recur_find_parent(result,inst)
 			return result
 		end
+		alias :check_sibling_instance :check_instance
 		
 		# 返回组件定义的所有相关路径
 		def check_definition(defi)
@@ -77,6 +82,16 @@ class InstancePathTree
 				recur_find_parent(pinst,inst)
 			}
 			return result
+		end
+		alias :check_sibling_definition :check_definition
+				
+		#返回组件定义或组件实例的所有相关路径
+		def check_sibling(instance_or_definition)
+			if instance_or_definition.respond_to?(:entities) then
+				check_sibling_definition(instance_or_definition)
+			else
+				check_sibling_instance(instance_or_definition)
+			end
 		end
 		
 		def recur_find_subordinate(node)
@@ -126,6 +141,7 @@ class InstancePathTree
 		end
 		private :check_subordinate_definition
 		
+		#返回组件定义或实例路径下的所有路径
 		def check_subordinate(instpath_or_definition)
 			if instpath_or_definition.respond_to?(:entities) then
 				check_subordinate_definition(instpath_or_definition)
