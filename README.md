@@ -1,7 +1,11 @@
 # SketchupScriptTool
-in SketchUp Ruby Script
-mostly run on SketchUp 2018 (ruby 1.9)
-在SketchUp 2018 (ruby 1.9) 中正常运行，较低版本不一定能正常使用。
+SketchUp command tool for ruby console, some Sketchup::Tool draft included.
+
+mostly test on SketchUp 2018 (ruby 1.9)
+
+适用于ruby控制台的代码工具，也包含部分工具类的草稿。
+
+大部分代码在 SketchUp 2018 (ruby 1.9) 中测试正常运行，较低版本不一定能正常使用。
 
 ## 使用方法
 
@@ -24,10 +28,9 @@ Sel::Surf.soft!
 #以上代码执行sel.rb脚本中Sel模块中Surf模块之中的soft!方法
 ```
 
-![X4 6B 8BG68CCL)_0S7%JU7](https://user-images.githubusercontent.com/42532325/189108954-81addbe2-dc68-4012-9b7a-b5c1c7c0e7a4.png)
+![image](readme/sel_vert.png)
 
-
-![image](https://user-images.githubusercontent.com/42532325/189108905-f3bb1802-b2e5-4e91-aebe-c64b227110c3.png)
+![image](readme/sel_soft.png)
 
 
 ## 详细介绍
