@@ -28,9 +28,9 @@ Sel::Surf.soft!
 #以上代码执行sel.rb脚本中Sel模块中Surf模块之中的soft!方法
 ```
 
-![image](readme/sel_vert.png)
+![image](readme/sel_vert.png?raw=true)
 
-![image](readme/sel_soft.png)
+![image](readme/sel_soft.png?raw=true)
 
 
 ## 详细介绍
