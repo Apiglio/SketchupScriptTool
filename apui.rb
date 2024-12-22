@@ -21,7 +21,6 @@ module APUI
 	end
 	
 	module EntityFilter
-		@type_caption_map = {"Text":"文本标注","DimensionLinear":"尺寸","DimensionRadial":"直径标注"}
 		def self.search_for_entities(typelist, orientlist, min_length, max_length)
 			list = InstancePathTree.check_subordinate(nil).subordinates
 			list.select!{|p|typelist.include?(p.leaf.class)}
