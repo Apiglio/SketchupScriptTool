@@ -61,7 +61,7 @@ module APUI
 				else
 					next unless orientlist.include?('0')
 				end
-				result_list << path.leaf
+				result_list << path
 			}
 			return result_list
 		end
@@ -88,14 +88,21 @@ module APUI
 				min_length = eval(e1.to_s+"."+u1)
 				max_length = eval(e2.to_s+"."+u2)
 				res = search_for_entities(typelist, orientlist, min_length, max_length)
-				res.each{|ent|
-					@window.execute_script("appendItem(\"#{("      "+ent.typename)[-6..-1]}\", \"#{ent.text}\", #{ent.persistent_id})")
+				res.each{|path|
+					@window.execute_script("appendItem(\"#{("      "+path.leaf.typename)[-6..-1]}\", \"#{path.leaf.text}\", #{path.persistent_id_path})")
 				}
 			}
 			@window.add_action_callback("do_zoom"){
 				|action_context, pid|
-				ent = Sketchup.active_model.find_entity_by_persistent_id(pid)
-				Sketchup.active_model.active_view.zoom(ent)
+				instpath = Sketchup.active_model.instance_path_from_pid_path(pid)
+				Sketchup.active_model.active_path = instpath
+				ent = instpath.leaf
+				sup = instpath.to_a[-2]
+				if sup.nil? then
+					Sketchup.active_model.active_view.zoom_entents
+				else
+					Sketchup.active_model.active_view.zoom(sup)
+				end
 				Sketchup.active_model.selection.clear
 				Sketchup.active_model.selection.add(ent)
 			}
