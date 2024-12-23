@@ -1,0 +1,85 @@
+body
+{
+	font-family: Arial, sans-serif;
+	line-height: 1.5;
+	background: white;
+	margin: 0;
+	padding: 0;
+	min-width: 200px;
+	min-height: 300px;
+	--theme: #d98;
+	--item: #eee;
+	--white: #fff;
+	--selected: #b32;
+}
+header
+{
+	position: fixed;
+	height: 2rem;
+	top: 0;
+	width: 100vw;
+	background: var(--theme);
+	text-align: center;
+	padding-block: 0.5rem;
+	font-size: 1.2rem;
+	font-weight: 700;
+}
+h2
+{
+	font-size: 1rem;
+	margin-block-start: 0.4rem;
+	margin-block-end: 0.2rem;
+}
+footer
+{
+	position: fixed;
+	top: calc(100vh - 3rem);
+	height: 3rem;
+	width: 100vw;
+	background: var(--theme);
+}
+div.content
+{
+	flex-direction: column;
+	position: fixed;
+	top: 3rem;
+	height: calc(100vh - 6rem);
+	padding-inline: 0.5rem;
+	overflow-y: auto;
+}
+div.dictionary
+{
+	height: fit-content;
+	margin-block-end: 1rem;
+}
+div.attribute
+{
+	display: flex;
+	flex-direction: row;
+	width: calc(100vw - 2rem);
+	padding-inline-start: 1rem;
+}
+div.key
+{
+	flex: 1 0 2rem;
+	margin-inline-end: 1rem;
+	min-width: 6rem;
+	overflow: hidden;
+}
+textarea.value
+{
+	flex: 4 0 5rem;
+	height: 2rem;
+}
+textarea.value[status="lock"]
+{
+	background: var(--item);
+}
+button.bottom_button
+{
+	float: right;
+	margin-block: 0.5rem;
+	margin-inline-end: 1rem;
+	width: 5rem;
+	height: 2rem;
+}

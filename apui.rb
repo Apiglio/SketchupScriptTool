@@ -122,4 +122,99 @@ module APUI
 			@toolbar.show
 		end
 	end
+	
+	module AttributeEditor
+		@dict_and_attr = {"ApiglioLabel"=>["Rank","Enabled","Type"]}
+		class SelectionObserver < Sketchup::SelectionObserver
+			def onSelectionBulkChange(selection)
+				AttributeEditor.read_entity()
+			end
+			def onSelectionCleared(selection)
+				AttributeEditor.read_entity()
+			end
+		end
+		def self.entity_to_jsobj(ent)
+			res={"type"=>ent.typename, "attr"=>{}}
+			unless ent.attribute_dictionaries.nil?
+				ent.attribute_dictionaries.entries.each{|dict|
+					res["attr"][dict.name]={}
+					dict.each{|k,v| res["attr"][dict.name][k]=v }
+				}
+			end
+			res
+		end
+		def self.apply_jsobj_to_entity(ent, js_obj)
+			js_obj["attr"].each{|dict_name, kvpairs|
+				kvpairs.each{|k,v|
+					old_value = ent.get_attribute(dict_name,k)
+					ent.set_attribute(dict_name,k,v) unless v == old_value
+				}
+			}
+		end
+		def self.read_entity()
+			sels = Sketchup.active_model.selection
+			if sels.length==1 then
+				obj = entity_to_jsobj(sels[0])
+				if defined?(@window) then
+					@window.execute_script("reset_items(#{@dict_and_attr.to_json})")
+					@window.execute_script("update_data(#{obj.to_json});")
+				end
+			else
+				@window.execute_script("clear_items()")
+			end
+		end
+		def self.write_entity(obj)
+			sels = Sketchup.active_model.selection
+			return false unless sels.length==1
+			self.apply_jsobj_to_entity(sels[0],obj)
+		end
+		def self.showUI()
+			unless defined?(@window) then
+				@window = UI::HtmlDialog.new(
+				{
+				  :dialog_title => "Apiglio Attribute Editor",
+				  :preferences_key => "- Apiglio -",
+				  :scrollable => true,
+				  :resizable => true,
+				  :width => 300,
+				  :height => 600,
+				  :min_width => 300,
+				  :min_height => 600,
+				  :style => UI::HtmlDialog::STYLE_UTILITY
+				})
+				@window.set_file(__dir__+"/UI/AttributeEditor.html")
+			end
+			
+			@window.add_action_callback("read_entity"){
+				|action_context|
+				self.read_entity()
+			}
+			@window.add_action_callback("write_entity"){
+				|action_context, obj|
+				self.write_entity(obj)
+			}
+			@window.set_on_closed{
+				Sketchup.active_model.selection.remove_observer(@sel_observer)
+			}
+			Sketchup.active_model.selection.add_observer(@sel_observer)
+			@window.show
+		end
+		unless defined?(@command) then
+			@command = UI::Command.new("Open Editor Window") {
+				self.showUI
+			}
+			@command.menu_text = "打开属性编辑器窗口"
+			@command.tooltip = "打开属性编辑器窗口"
+			@command.status_bar_text = "打开 Apiglio Attribute Editor 的属性编辑器窗口"
+			@command.small_icon = __dir__+"/UI/AttributeEditor_S.png"
+			@command.large_icon = __dir__+"/UI/AttributeEditor_L.png"
+			@command.set_validation_proc { MF_ENABLED }
+			@toolbar = UI::Toolbar.new("Apiglio Attribute Editor")
+			@toolbar = @toolbar.add_item(@command)
+			@toolbar.show
+		end
+		unless defined?(@sel_observer) then
+			@sel_observer = self::SelectionObserver.new
+		end
+	end
 end
