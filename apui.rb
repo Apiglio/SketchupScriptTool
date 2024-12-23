@@ -98,7 +98,7 @@ module APUI
 				ent = instpath.leaf
 				sup = instpath.to_a[-2]
 				if sup.nil? then
-					Sketchup.active_model.active_view.zoom_entents
+					Sketchup.active_model.active_view.zoom_extents
 				else
 					Sketchup.active_model.active_view.zoom(sup)
 				end
