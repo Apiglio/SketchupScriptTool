@@ -2,9 +2,9 @@
 # Apiglio
 # 通过组件或组件定义返回所有相关路径
 # 相关的路径（sibling）指修改指定图元时会一并修改的其他图元路径，所有路径以相同的图元结尾
-# "sibling" means instance path that changes when a instance (or drawing element) changes.
+# "sibling" means instance path that changes when an instance (or drawing element) changes.
 # 其下的路径（subordinate）指绘制一个实例路径时需要向下绘制的所有包含的实例路径。
-# "subordinate" means every instance path need to be drawn when drawing a instance path.
+# "subordinate" means every instance path need to be drawn when drawing an instance path.
 
 class InstancePathTree
 	attr_accessor :children, :parent, :instance, :instpath
