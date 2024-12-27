@@ -30,7 +30,7 @@ module APUI
 					when Sketchup::Text
 						vec = path.leaf.vector ? path.transformation*path.leaf.vector : Geom::Vector3d.new([0,0,0])
 					when Sketchup::DimensionLinear
-						vec = path.transformation*path.leaf.offset_vector
+						vec = path.leaf.end[1] - path.leaf.start[1]
 					when Sketchup::DimensionRadial
 						pts = path.leaf.leader_points
 						vec = pts[2] - pts[1]
@@ -64,6 +64,18 @@ module APUI
 			}
 			return result_list
 		end
+		def self.zoom_to_instpath(instpath)
+			Sketchup.active_model.active_path = instpath
+			ent = instpath.leaf
+			sup = instpath.to_a[-2]
+			if sup.nil? then
+				Sketchup.active_model.active_view.zoom_extents
+			else
+				Sketchup.active_model.active_view.zoom(sup)
+			end
+			Sketchup.active_model.selection.clear
+			Sketchup.active_model.selection.add(ent)
+		end
 		def self.showUI()
 			unless defined?(@window) then
 				@window = UI::HtmlDialog.new(
@@ -94,16 +106,7 @@ module APUI
 			@window.add_action_callback("do_zoom"){
 				|action_context, pid|
 				instpath = Sketchup.active_model.instance_path_from_pid_path(pid)
-				Sketchup.active_model.active_path = instpath
-				ent = instpath.leaf
-				sup = instpath.to_a[-2]
-				if sup.nil? then
-					Sketchup.active_model.active_view.zoom_extents
-				else
-					Sketchup.active_model.active_view.zoom(sup)
-				end
-				Sketchup.active_model.selection.clear
-				Sketchup.active_model.selection.add(ent)
+				zoom_to_instpath(instpath)
 			}
 			@window.show
 		end
