@@ -29,10 +29,15 @@ class AxesInstance
 	def get_definition()
 		defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件")
 		if defname then
-			return Sketchup.active_model.definitions[defname.first]
-		else
-			return nil
+			@@definition = Sketchup.active_model.definitions[defname.first]
+			paths = InstancePathTree.check_subordinate(@@definition).subordinates
+			paths.reject!{|ent|ent.leaf.hidden?}
+			@@edge_paths = paths.clone
+			@@face_paths = paths
+			@@face_paths.select!{|path|path.leaf.is_a?(Sketchup::Face)}
+			@@edge_paths.select!{|path|path.leaf.is_a?(Sketchup::Edge)}
 		end
+		defname
 	end
 	def refresh_origin()
 		@@origin = @@current_point
@@ -70,12 +75,11 @@ class AxesInstance
 		Sketchup.active_model.commit_operation()
 	end
 	def activate()
-		@@definition = get_definition()
-		if @@definition.nil? then
+		if get_definition() then
+			clear
+		else
 			Sketchup.active_model.select_tool nil
-			return nil
 		end
-		clear
 	end
 	def onMouseMove(flags,x,y,view)
 		ip = view.inputpoint(x,y)
@@ -120,15 +124,9 @@ class AxesInstance
 		return bb
 	end
 	def draw_definition(view, face_color="white", edge_color="black")
-		paths = InstancePathTree.check_subordinate(@@definition).subordinates
-		paths.reject!{|ent|ent.leaf.hidden?}
-		edge_paths = paths.clone
-		face_paths = paths
-		face_paths.select!{|path|path.leaf.is_a?(Sketchup::Face)}
-		edge_paths.select!{|path|path.leaf.is_a?(Sketchup::Edge)}
 		if face_color.downcase != "none" then
 			view.drawing_color = face_color
-			face_paths.each{|path|
+			@@face_paths.each{|path|
 				face = path.leaf
 				ms = face.mesh
 				vs = ms.polygons.map{|tri|tri.map{|idx|ms.point_at(idx.abs)}}
@@ -140,7 +138,7 @@ class AxesInstance
 		end
 		if edge_color.downcase != "none" then
 			view.drawing_color = edge_color
-			edge_paths.each{|path|
+			@@edge_paths.each{|path|
 				v1 = path.leaf.start.position
 				v2 = path.leaf.end.position
 				tr = path.transformation
