@@ -27,8 +27,12 @@ class AxesInstance
 		@@trans  = Geom::Transformation.new
 	end
 	def get_definition()
-		defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件").first
-		return defname == "" ? nil : Sketchup.active_model.definitions[defname]
+		defname = UI.inputbox(["放置组件"],[""],[Sketchup.active_model.definitions.map(&:name).join("|")],"选择组件")
+		if defname then
+			return Sketchup.active_model.definitions[defname.first]
+		else
+			return nil
+		end
 	end
 	def refresh_origin()
 		@@origin = @@current_point
@@ -67,6 +71,10 @@ class AxesInstance
 	end
 	def activate()
 		@@definition = get_definition()
+		if @@definition.nil? then
+			Sketchup.active_model.select_tool nil
+			return nil
+		end
 		clear
 	end
 	def onMouseMove(flags,x,y,view)
