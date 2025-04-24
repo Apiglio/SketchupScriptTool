@@ -1,29 +1,44 @@
 
 module Geo
 	# 将EsriJSON中的面数据导入SketchUp并将字段值赋值给面要素
+	# 不能读取多部件，请在GIS中将多部件转至单部件
+	# 创建的平面自动打组并平移到原点附近，平移参数保存在群组的EsriJSONAttribute属性中
+	
 	def self.importFacesFromEsriJSON(filename)
+		
+		#读取EsriJSON
 		json_file = File.open(filename,"r")
 		json_string = json_file.read()
 		json = JSON.parse(json_string)
 		json_file.close()
-		
 		if json["geometryType"] != "esriGeometryPolygon" then
 			raise ArgumentError.new("Geometry type of EsriJSON is not Polygon.")
 		end
-		Sketchup.active_model.start_operation("Import Faces From EsriJson")
+		
+		#创建面操作
+		Sketchup.active_model.start_operation("Import Faces From EsriJSON")
 		begin
+			face_generated = []
 			Sketchup.active_model.entities.build{|builder|
 				json["features"].each{|feature|
 					loops = feature["geometry"]["rings"]
 					outer_loop = (loops[0][0..-2]).map{|point|point.map(&:m)}
 					inner_loops = loops[1..-1].map{|loop|loop[0..-2].map{|point|point.map(&:m)}}
-					puts "outer_loop count=#{outer_loop.count}  inner_loop count=#{inner_loops.map(&:count)}"
 					face = builder.add_face(outer_loop, holes: inner_loops)
 					feature["attributes"].each{|key, value|
 						face.set_attribute("EsriJSONAttribute",key,value)
 					}
+					face_generated << face
 				}
 			}
+			Sketchup.active_model.entities.weld(face_generated.map{|f|f.edges}.flatten.uniq) if Sketchup.active_model.entities.respond_to?(:weld)
+			group = Sketchup.active_model.entities.add_group(face_generated.map(&:all_connected).flatten.uniq)
+			offset = group.bounds.min
+			trans = Geom::Transformation.translation(offset)
+			group.transform!(trans.inverse)
+			group.set_attribute("EsriJSONAttribute","Offset_X",offset[0])
+			group.set_attribute("EsriJSONAttribute","Offset_Y",offset[1])
+			
 		rescue
 			Sketchup.active_model.abort_operation()
 			raise ArgumentError.new("FacesDrawingError.")
