@@ -568,7 +568,20 @@ module Sel
 	def Sel.extcpt
 		return [Sel.extend,Sel.compact]
 	end
-	
+	#查找内部平行层
+	def Sel.innerPlane
+		Sel.reselect{|ent|ent.is_a?(Sketchup::Face)}
+		Sel.reselect{|face|
+			face.edges.all?{|edge|
+				surf_faces = edge.faces - [face]
+				if surf_faces.length == 2 then
+					surf_faces[0].normal.parallel?(surf_faces[1].normal)
+				else
+					false
+				end
+			}
+		}
+	end
 	
 	#===============================群组选择部================================
 	
