@@ -16,19 +16,24 @@ module Geo
 		end
 		
 		#创建面操作
+		failure_count = 0
 		Sketchup.active_model.start_operation("Import Faces From EsriJSON")
 		begin
 			face_generated = []
 			Sketchup.active_model.entities.build{|builder|
 				json["features"].each{|feature|
 					loops = feature["geometry"]["rings"]
-					outer_loop = (loops[0][0..-2]).map{|point|point.map(&:m)}
-					inner_loops = loops[1..-1].map{|loop|loop[0..-2].map{|point|point.map(&:m)}}
-					face = builder.add_face(outer_loop, holes: inner_loops)
-					feature["attributes"].each{|key, value|
-						face.set_attribute("EsriJSONAttribute",key,value)
-					}
-					face_generated << face
+					if loops.respond_to?(:[]) then
+						outer_loop = (loops[0][0..-2]).map{|point|point.map(&:m)}
+						inner_loops = loops[1..-1].map{|loop|loop[0..-2].map{|point|point.map(&:m)}}
+						face = builder.add_face(outer_loop, holes: inner_loops)
+						feature["attributes"].each{|key, value|
+							face.set_attribute("EsriJSONAttribute",key,value)
+						}
+						face_generated << face
+					else
+						failure_count += 1
+					end
 				}
 			}
 			Sketchup.active_model.entities.weld(face_generated.map{|f|f.edges}.flatten.uniq) if Sketchup.active_model.entities.respond_to?(:weld)
@@ -38,12 +43,12 @@ module Geo
 			group.transform!(trans.inverse)
 			group.set_attribute("EsriJSONAttribute","Offset_X",offset[0])
 			group.set_attribute("EsriJSONAttribute","Offset_Y",offset[1])
-			
 		rescue
 			Sketchup.active_model.abort_operation()
-			raise ArgumentError.new("FacesDrawingError.")
+			raise RuntimeError.new("FacesDrawingError.")
 		end
 		Sketchup.active_model.commit_operation()
+		return failure_count
 	end
 end
 
@@ -68,7 +73,6 @@ end
 	# puts floor_area_ratio
 # }
 # Sketchup.active_model.commit_operation()
-
 
 
 
