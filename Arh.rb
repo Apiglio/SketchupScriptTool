@@ -126,4 +126,48 @@ module Arh
 		end
 	end
 	
+	module Stories
+		#在block中计算层高并创建多层建筑草模
+		#目前faces不能在群组内，pushpull会将面放到原点，之后改current_path解决
+		#Arh::Stories.pushpull_stories_by_faces(fs, 3.m){|face|face.get_attribute("EsriJSONAttribute", "层数")}
+		def self.pushpull_stories_by_faces(faces, height_of_stories, &block)
+			raise ArgumentError.new("faces must in Model instead of in Definition") unless faces.map{|f|f.parent.class}.uniq==[Sketchup::Model]
+			model = Sketchup.active_model
+			ppCopy = true
+			soDisableUI = true
+			Sketchup.active_model.start_operation("Pushpull Stories by Faces", soDisableUI)
+			begin
+				total_count = 0
+				faces.each{|face|
+					number_of_stories = block.call(face)
+					next if number_of_stories<1
+					grp = model.entities.add_group(face)
+					bottom = grp.definition.entities.grep(Sketchup::Face)[0]
+					bottom.pushpull(-height_of_stories*number_of_stories, ppCopy)
+					floor = grp.definition.entities.add_group(bottom)
+					floor.move!(grp.transformation)
+					parts = [grp, floor]
+					1.upto(number_of_stories-1){|floor_number|
+						nf = floor.copy
+						nf.move!(grp.transformation*Geom::Transformation.translation([0, 0, floor_number*height_of_stories]))
+						parts << nf
+					}
+					building = model.entities.add_group(parts)
+					# 把面要素属性复制给群组
+					face.attribute_dictionaries.entries.each{|entry|
+						entry.to_h.each{|k,v|
+							building.set_attribute(entry.name, k, v)
+						}
+					}
+					total_count += 1
+				}
+			rescue
+				Sketchup.active_model.abort_operation()
+				raise RuntimeError.new("Pushpull Stories Error")
+			end
+			Sketchup.active_model.commit_operation()
+			return total_count
+		end
+	end
+	
 end
