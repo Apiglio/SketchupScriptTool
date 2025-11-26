@@ -170,4 +170,36 @@ module Arh
 		end
 	end
 	
+	module Roofs
+		#根据给定的平面和确定的屋顶坡度创建山墙屋顶
+		#如果face不是四边形则报错
+		def self.build_gable_by_pitch(face, pitch_angle)
+			edgeuses = face.loops[0].edgeuses
+			raise RuntimeError.new("GableRoof: expected exactly 4 edges") unless edgeuses.count==4
+			longest_eu = edgeuses.max{|eu|eu.edge.length}
+			b1 = longest_eu.previous.edge
+			b2 = longest_eu.next.edge
+			p1 = longest_eu.edge.start
+			p2 = longest_eu.edge.end
+			p1,p2 = p2,p1 if longest_eu.reversed?
+			p0 = b1.other_vertex(p1)
+			p3 = b2.other_vertex(p2)
+			m1 = Geom.linear_combination(0.5, p1.position, 0.5, p0.position)
+			m2 = Geom.linear_combination(0.5, p2.position, 0.5, p3.position)
+			h1 = Math.tan(pitch_angle)*b1.length/2.0
+			h2 = Math.tan(pitch_angle)*b2.length/2.0
+			r1 = m1 + [0,0,h1]
+			r2 = m2 + [0,0,h2]
+			face.parent.entities.build{|builder|
+				builder.add_face(r1, p1, p0)
+				builder.add_face(r2, p3, p2)
+				builder.add_edge(r1, p2).hidden = true
+				builder.add_edge(r1, p3).hidden = true
+				builder.add_face(r1, p2, p1)
+				builder.add_face(r1, r2, p2)
+				builder.add_face(r1, p0, p3)
+				builder.add_face(r1, p3, r2)
+			}
+		end
+	end
 end
