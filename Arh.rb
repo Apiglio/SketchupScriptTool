@@ -176,7 +176,7 @@ module Arh
 		def self.build_gable_by_pitch(face, pitch_angle)
 			edgeuses = face.loops[0].edgeuses
 			raise RuntimeError.new("GableRoof: expected exactly 4 edges") unless edgeuses.count==4
-			longest_eu = edgeuses.max{|eu|eu.edge.length}
+			longest_eu = edgeuses.max_by{|eu|eu.edge.length}
 			b1 = longest_eu.previous.edge
 			b2 = longest_eu.next.edge
 			p1 = longest_eu.edge.start
