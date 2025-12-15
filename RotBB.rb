@@ -1,11 +1,9 @@
 # RotatedBoundingBox.rb
 # Minimal oriented bounding box with canonical sorted lengths and third axis validation
 # plus add_point and make_box methods respecting axis-length mapping
-
 #test-1
 #t=RotatedBoundingBox.new(origin:[0,0,0],axes:[[1,0,0],[0,1,0],[0,0,1]],lengths:[1.m,1.m,1.m])
 #t.contains_point?([0.5.m,0.5.m,0.5.m])
-
 class RotatedBoundingBox
 	attr_reader :origin, :axes, :lengths
 	
@@ -22,16 +20,18 @@ class RotatedBoundingBox
 		w = u.cross(v).normalize
 		raise ArgumentError.new("axes[0]和axes[1]应不共线") if w.to_a.all?(&:zero?)
 		input_w = Geom::Vector3d.new(axes[2]).normalize
-		unless w.samedirection?(input_w)
-			warn "警告：给定的axes[3]不与前两轴正交，已经重新计算并替换"
-		end
+		# unless w.samedirection?(input_w)
+			# warn "警告：给定的axes[3]不与前两轴正交，已经重新计算并替换"
+		# end
 		@axes = [u, v, w]
 		@lengths = lengths.map(&:to_f)
 	end
 	
 	def create_by_vertex(vert)
 		initialization(origin:vert.position, axes:[[1,0,0],[0,1,0],[0,0,1]], lengths:[0,0,0])
+		self
 	end
+	
 	def create_by_edge(edge)
 		u = edge.line[1]
 		if u.parallel?([0,0,1]) then
@@ -43,6 +43,7 @@ class RotatedBoundingBox
 		end
 		initialization(origin:edge.line[0], axes:[u,v,w], lengths:[edge.length,0,0])
 	end
+	
 	def create_by_face(face)
 		w = face.normal
 		edgeuses = face.loops[0].edgeuses
@@ -52,7 +53,24 @@ class RotatedBoundingBox
 		p = longest_eu.reversed? ? longest_eu.edge.end : longest_eu.edge.start
 		initialization(origin:p.position, axes:[u,v,w], lengths:[0,0,0])
 		face.vertices.each{|v|self.add_point(v.position)}
+		self
 	end
+	
+	def create_by_group(group)
+		g_bbox = group.definition.bounds
+		g_orig = Geom::Point3d.new(g_bbox.min)
+		g_axes = [
+			Geom::Vector3d.new(g_bbox.width, 0, 0),
+			Geom::Vector3d.new(0, g_bbox.height, 0),
+			Geom::Vector3d.new(0, 0, g_bbox.depth)
+		]
+		@origin = group.transformation*g_orig
+		@axes = g_axes.map{|axis|group.transformation*axis}
+		@lengths = @axes.map{|axis|Geom::Vector3d.new(axis).length}
+		@axes.map!{|axis|axis.normalize}
+		self
+	end
+	
 	def create_by_entities(ents)
 		return nil if ents.empty?
 		rest_of_elems = ents.to_a
@@ -60,13 +78,21 @@ class RotatedBoundingBox
 		instances, rest_of_elems = rest_of_elems.partition{|i|i.is_a?(Sketchup::ComponentInstance)}
 		faces,     rest_of_elems = rest_of_elems.partition{|i|i.is_a?(Sketchup::Face)}
 		edges,     rest_of_elems = rest_of_elems.partition{|i|i.is_a?(Sketchup::Edge)}
+		inst_n_grp = groups+instances
+		inst_n_grp.sort_by!{|g|
+			b = g.definition.bounds
+			t = g.transformation
+			# 这里需要动态组件的x/y/zscale方法
+			- b.width * b.height * b.depth * t.xscale * t.yscale * t.zscale
+		}
+		faces.sort_by!{|f|-f.area}
 		edges.select!{|edge|(edge.faces&faces).empty?}
-		ordered_ents = groups + instances + faces + edges
-		p ordered_ents
+		ordered_ents = inst_n_grp + faces + edges
 		res = ordered_ents.map{|ent|RotatedBoundingBox.new(ent)}.inject(&:add_rbound)
 		@origin  = res.origin
 		@axes    = res.axes
 		@lengths = res.lengths
+		self
 	end
 	
 	def initialize(entity_of_array)
@@ -75,6 +101,7 @@ class RotatedBoundingBox
 			when Sketchup::Vertex then create_by_vertex(entity_of_array)
 			when Sketchup::Edge then create_by_edge(entity_of_array)
 			when Sketchup::Face then create_by_face(entity_of_array)
+			when Sketchup::ComponentInstance, Sketchup::Group then create_by_group(entity_of_array)
 			when Array then create_by_entities(entity_of_array)
 			else nil
 		end
@@ -85,15 +112,15 @@ class RotatedBoundingBox
 		@axes = nil
 		@lengths = [-Float::INFINITY, -Float::INFINITY, -Float::INFINITY]
 	end
-
+	
 	def empty?
 		@origin.nil? || @lengths.all?{|l|l<=0}
 	end
-
+	
 	def valid?
 		!empty?
 	end
-
+	
 	def corner(i)
 		raise "box is empty" if empty?
 		dx = (i & 1) != 0 ? @lengths[0] : 0
@@ -104,15 +131,25 @@ class RotatedBoundingBox
 		dz_vec = Geom::Vector3d.new(@axes[2].to_a.map{|c|c*dz})
 		@origin + dx_vec + dy_vec + dz_vec
 	end
-
+	
 	def volume
 		return 0 if empty?
 		@lengths.reduce(:*)
 	end
-
+	
+	def coordinate_system
+		@axes[2].dot(@axes[0].cross(@axes[1]))
+	end
+	
+	def dimension_rank
+		3-@lengths.count(&:zero?)
+	end
+	
+	def parallel?(rbb)
+		@axes.zip(rbb.axes).all?{|axis_pair|axis_pair[0].parallel?(axis_pair[1])}
+	end
+	
 	def contains_point?(point)
-		raise TypeError, "point must be point-like" unless point.respond_to?(:to_a)
-		return false if empty?
 		p = Geom::Point3d.new(point)
 		vec = p - @origin
 		dx = vec.dot(@axes[0])
@@ -120,7 +157,7 @@ class RotatedBoundingBox
 		dz = vec.dot(@axes[2])
 		dx.between?(0, @lengths[0]) && dy.between?(0, @lengths[1]) && dz.between?(0, @lengths[2])
 	end
-
+	
 	def add_point(point)
 		raise TypeError, "point must be point-like" unless point.respond_to?(:to_a)
 		newpoint     = Geom::Point3d.new(point)
@@ -137,13 +174,13 @@ class RotatedBoundingBox
 				@origin += origin_offset
 			end
 		}
+		self
 	end
 	
 	def add_rbound(rbound)
 		8.times{|i|self.add_point(rbound.corner(i))}
 		self
 	end
-	
 	
 	def make_box
 		return nil if empty?
@@ -168,4 +205,39 @@ class RotatedBoundingBox
 		
 		grp
 	end
+	
+	def norm_by(rbb)
+		raise ArgumentError.new("RotatedBoundingBox expected") unless rbb.is_a?(RotatedBoundingBox)
+		return self if empty? || rbb.empty?
+		used = [false,false,false]
+		new_axes    = [0,0,0]
+		new_lengths = [0,0,0]
+		origin_shift = Geom::Vector3d.new(0,0,0)
+		rbb.axes.each_with_index{|ref_axis, i|
+			best_j   = nil
+			best_dot = -1.0
+			@axes.each_with_index do |ax, j|
+				next if used[j]
+				d = ax.dot(ref_axis).abs
+				if d > best_dot
+					best_dot = d
+					best_j   = j
+				end
+			end
+			used[best_j] = true
+			ax  = @axes[best_j]
+			len = @lengths[best_j]
+			if ax.dot(ref_axis) < 0
+				origin_shift += Geom::Vector3d.new(ax.to_a.map{|c|c*len})
+				ax = Geom::Vector3d.new(ax.to_a.map{|c|-c})
+			end
+			new_axes[i]    = ax
+			new_lengths[i] = len
+		}
+		@origin  += origin_shift
+		@axes     = new_axes
+		@lengths  = new_lengths
+		self
+	end
+	
 end
