@@ -132,6 +132,40 @@ class RotatedBoundingBox
 		@origin + dx_vec + dy_vec + dz_vec
 	end
 	
+	LineVertexIndice = [
+		[0, 1], [1, 3], [3, 2], [2, 0],
+		[4, 5], [5, 7], [7, 6], [6, 4],
+		[0, 4], [1, 5], [3, 7], [2, 6]
+	].freeze
+	def line(i)
+		LineVertexIndice[i].tap{|i,j|
+			a = corner(i)
+			b = corner(j)
+			return [a, b-a]
+		}
+	end
+	
+	def plane(i)
+		min_point = @origin.to_a
+		max_point = corner(7).to_a
+		get_plane = proc{|orig,axis|[*(axis.to_a),-axis.to_a.zip(orig.to_a).sum{|i|i.inject(&:*)}]}
+		case i
+			when 0 then get_plane.call(min_point, @axes[2])
+			when 1 then get_plane.call(min_point, @axes[0])
+			when 2 then get_plane.call(max_point, @axes[1].to_a.map(&:-@))
+			when 3 then get_plane.call(max_point, @axes[0].to_a.map(&:-@))
+			when 4 then get_plane.call(min_point, @axes[1])
+			when 5 then get_plane.call(max_point, @axes[2].to_a.map(&:-@))
+		end
+	end
+	
+	def center
+		@origin +
+		Geom::Vector3d.new(@axes[0].to_a.map{|c| c * @lengths[0] * 0.5}) +
+		Geom::Vector3d.new(@axes[1].to_a.map{|c| c * @lengths[1] * 0.5}) +
+		Geom::Vector3d.new(@axes[2].to_a.map{|c| c * @lengths[2] * 0.5})
+	end
+	
 	def volume
 		return 0 if empty?
 		@lengths.reduce(:*)
@@ -206,7 +240,7 @@ class RotatedBoundingBox
 		grp
 	end
 	
-	def norm_by(rbb)
+	def norm_by!(rbb)
 		raise ArgumentError.new("RotatedBoundingBox expected") unless rbb.is_a?(RotatedBoundingBox)
 		return self if empty? || rbb.empty?
 		used = [false,false,false]
@@ -239,5 +273,52 @@ class RotatedBoundingBox
 		@lengths  = new_lengths
 		self
 	end
+	
+	def norm_by(rbb)
+		dup.tap{|b|b.norm_by!(rbb)}
+	end
+	
+	def align_to(rbb, vector)
+		# 返回当前范围朝vector方向和给定rbb对齐所需要的平移变换
+		raise ArgumentError unless rbb.is_a?(RotatedBoundingBox)
+		raise ArgumentError.new("RotatedBoundingBoxes should be parallel") unless parallel?(rbb)
+		d = Geom::Vector3d.new(vector).normalize
+		idx = @axes.find_index {|a|a.parallel?(d)}
+		raise ArgumentError.new("vector must be parallel to both RotatedBoundingBoxes") unless idx
+		sign = @axes[idx].dot(d) > 0 ? 1 : -1
+		dir  = Geom::Vector3d.new(d.to_a.map{|c|c*sign})
+		s_self = 8.times.map {|i|Geom::Vector3d.new(corner(i).to_a).dot(dir)}.min
+		s_rbb  = 8.times.map {|i|Geom::Vector3d.new(rbb.corner(i).to_a).dot(dir)}.min
+		delta = s_rbb - s_self
+		Geom::Transformation.translation(dir.to_a.map{|c|c*delta})
+	end
+	
+	def twist_to(rbb)
+		# 返回当前范围通过角度微调达到给定rbb所需要的旋转变换
+		raise ArgumentError unless rbb.is_a?(RotatedBoundingBox)
+		ct = center
+		axes_self = @axes.clone
+		axes_give = rbb.axes.clone
+		axis_pairs = Array.new(3).map.with_index{|elem,i|
+			best_axis = axes_give.max_by{|a|a.dot(axes_self[i])}
+			axes_give.delete(best_axis)
+			[axes_self[i], best_axis]
+		}
+		t1 = Geom::Transformation.axes(ct, *axis_pairs.map(&:first))
+		t2 = Geom::Transformation.axes(ct, *axis_pairs.map(&:last))
+		t2 * t1.inverse
+	end
+	
+	def knock_to(rbb, vector)
+		# 返回当前范围朝vector方向接触到给定rbb所需要的平移变换
+		best_plane = 6.times.map{|i|rbb.plane(i)}.min_by{|p|Geom::Vector3d.new(vector).angle_between(p[..2])}
+		corners    = 8.times.map{|i|corner(i)}
+		prj_pts    = corners.map{|i|i.project_to_plane(best_plane)}
+		offsets    = prj_pts.zip(corners).map{|targ,orig|targ-orig}
+		raise RuntimeError.new("已经重合或超过目标平面") unless offsets.all?{|vec|vec.dot(vector)>0}
+		best_move  = offsets.min_by{|vec|vec.length}
+		Geom::Transformation.translation(best_move)
+	end
+	
 	
 end
