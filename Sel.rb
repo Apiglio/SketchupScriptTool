@@ -414,6 +414,16 @@ module Sel
 		}
 	end
 	
+	#只选择固实体内剖面
+	def Sel.inner_face()
+		Sel.reselect{|ent|ent.is_a?(F)}
+		Sel.reselect{|face|
+			face.edges.all?{|edge|
+				(edge.faces-[f]).length > 2
+			}
+		}
+		sels.length
+	end
 	
 	
 	#形状指数选择
