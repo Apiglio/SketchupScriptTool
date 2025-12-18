@@ -1153,6 +1153,17 @@ module Cge
 			@cg.definition.entities.select{|i|i.is_a?(Sketchup::Group) or i.is_a?(Sketchup::ComponentInstance)}.empty?
 		end
 		
+		def is_solid?
+			ents = @cg.definition.entities
+			ents.grep(Sketchup::Face).all?{|face|
+				face.edges.all?{|edge|
+					(edge.faces - [face]).length == 1
+				}
+			} and ents.grep(Sketchup::Edge).all?{|edge|
+				edge.faces.length == 2
+			}
+		end
+		
 		#将组件转化为群组，参数表示是否保存组件定义中的属性
 		def to_group(preserve_definition_attribute=false)
 			raise ArgumentError.new("ComponentInstance expected but #{@cg.class} found.") unless @cg.is_a?(Sketchup::ComponentInstance)
