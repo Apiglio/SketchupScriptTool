@@ -278,6 +278,30 @@ class RotatedBoundingBox
 		dup.tap{|b|b.norm_by!(rbb)}
 	end
 	
+	def transformation
+		Geom::Transformation.axes(@origin, @axes)
+	end
+	
+	def mirror(vec)
+		axes_scaling = @axes.clone
+		normal = axes_scaling.max_by{|axis|axis.dot(vec).abs}
+		axes_scaling.delete(normal)
+		ct = center
+		sc = Geom::Transformation.scaling([0,0,0], -1, 1, 1)
+		ax = Geom::Transformation.axes(ct, normal, *axes_scaling)
+		ax * sc * ax.inverse
+	end
+	
+	def rotate(vec, angle=180.degrees)
+		axes_scaling = @axes.clone
+		normal = axes_scaling.max_by{|axis|axis.dot(vec).abs}
+		axes_scaling.delete(normal)
+		ct = center
+		rt = Geom::Transformation.rotation([0,0,0], [0,0,1], angle)
+		ax = Geom::Transformation.axes(ct, *axes_scaling, normal)
+		ax * rt * ax.inverse
+	end
+	
 	def align_to(rbb, vector)
 		# 返回当前范围朝vector方向和给定rbb对齐所需要的平移变换
 		raise ArgumentError unless rbb.is_a?(RotatedBoundingBox)
@@ -287,8 +311,8 @@ class RotatedBoundingBox
 		raise ArgumentError.new("vector must be parallel to both RotatedBoundingBoxes") unless idx
 		sign = @axes[idx].dot(d) > 0 ? 1 : -1
 		dir  = Geom::Vector3d.new(d.to_a.map{|c|c*sign})
-		s_self = 8.times.map {|i|Geom::Vector3d.new(corner(i).to_a).dot(dir)}.min
-		s_rbb  = 8.times.map {|i|Geom::Vector3d.new(rbb.corner(i).to_a).dot(dir)}.min
+		s_self = 8.times.map{|i|Geom::Vector3d.new(corner(i).to_a).dot(dir)}.min
+		s_rbb  = 8.times.map{|i|Geom::Vector3d.new(rbb.corner(i).to_a).dot(dir)}.min
 		delta = s_rbb - s_self
 		Geom::Transformation.translation(dir.to_a.map{|c|c*delta})
 	end
@@ -299,14 +323,22 @@ class RotatedBoundingBox
 		ct = center
 		axes_self = @axes.clone
 		axes_give = rbb.axes.clone
-		axis_pairs = Array.new(3).map.with_index{|elem,i|
-			best_axis = axes_give.max_by{|a|a.dot(axes_self[i])}
-			axes_give.delete(best_axis)
-			[axes_self[i], best_axis]
-		}
+		dot_product_sorting = axes_self.map.with_index{|axis_self, i|
+			axes_give.map.with_index{|axis_give, j|
+				[axis_self.dot(axis_give).abs,i,j]
+			}
+		}.flatten(1).sort_by(&:first)
+		axis_pairs = []
+		while axis_pairs.length<3 and not dot_product_sorting.empty? do
+			axis_pairs << dot_product_sorting.pop[1..2]
+			dot_product_sorting.reject!{|rec|
+				rec[1]==axis_pairs.first[0] or rec[2]==axis_pairs.first[1]
+			}
+		end
+		axis_pairs.map!{|i,j|[axes_self[i],axes_give[j]]}
 		t1 = Geom::Transformation.axes(ct, *axis_pairs.map(&:first))
 		t2 = Geom::Transformation.axes(ct, *axis_pairs.map(&:last))
-		t2 * t1.inverse
+		t2 * (t1.inverse)
 	end
 	
 	def knock_to(rbb, vector)
