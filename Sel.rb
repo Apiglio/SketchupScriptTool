@@ -821,16 +821,29 @@ module Sel
 			return edg.parent.entities.add_line(p1,p2)
 		end
 		private_class_method :line_to_base_plane
+		def self.line_to_base_plane2(edg,plane=[0,0,1,0])
+			p1=edg.start.position
+			p2=edg.end.position
+			return edg.parent.entities.add_line(p1.project_to_plane(plane),p2.project_to_plane(plane))
+		end
+		private_class_method :line_to_base_plane2
 		#表面下拉为固实体
-		def self.to_solid(min_height=0.m)
+		def self.to_solid(min_height=0.m,up=[0,0,1])
 			Sketchup.active_model.start_operation("Sel::Surf 创建固实体")
-			begin
+			#begin
 				bs=bounds
-				z_min=bs.map{|e|e.vertices}.flatten.uniq.sort_by{|v|v.position.z}[0].position.z
+				nline=[[0,0,0],up]
+				z_proj=bs.map{|e|e.vertices}.flatten.uniq.map{|v|v.position.project_to_line(nline)}
+				p z_proj
+				lowest=z_proj.sort_by{|i|i.z*up.z}[0]
+				z_min=lowest.distance([0,0,0])
+				z_min=-z_min if lowest.z*up.z<0
+				p z_min
 				base_height=z_min-min_height
 				es=[]
 				bs.each{|e|
-					ne=line_to_base_plane(e,base_height)
+					#ne=line_to_base_plane(e,base_height)
+					ne=line_to_base_plane2(e,up+[-base_height])
 					es<<ne
 					nf=e.parent.entities.add_face((e.vertices+ne.vertices.reverse).uniq)
 					(nf.edges-[e,ne]).each{|vertical_line|vertical_line.soft=true}
@@ -838,9 +851,9 @@ module Sel
 				Sel.sels[0].parent.entities.add_face(es.to_a)
 				#es[0].find_faces
 				Sketchup.active_model.commit_operation
-			rescue
-				Sketchup.active_model.abort_operation
-			end
+			#rescue
+				#Sketchup.active_model.abort_operation
+			#end
 		end
 	end
 	
