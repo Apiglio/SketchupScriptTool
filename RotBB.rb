@@ -26,6 +26,7 @@ class RotatedBoundingBox
 		@axes = [u, v, w]
 		@lengths = lengths.map(&:to_f)
 	end
+	private :initialization
 	
 	def create_by_vertex(vert)
 		initialization(origin:vert.position, axes:[[1,0,0],[0,1,0],[0,0,1]], lengths:[0,0,0])
@@ -138,9 +139,9 @@ class RotatedBoundingBox
 		[0, 4], [1, 5], [3, 7], [2, 6]
 	].freeze
 	def line(i)
-		LineVertexIndice[i].tap{|i,j|
-			a = corner(i)
-			b = corner(j)
+		LineVertexIndice[i].tap{|c|
+			a = corner(c[0])
+			b = corner(c[1])
 			return [a, b-a]
 		}
 	end
@@ -292,7 +293,8 @@ class RotatedBoundingBox
 		ax * sc * ax.inverse
 	end
 	
-	def rotate(vec, angle=180.degrees)
+	def axial(vec)
+		angle=180.degrees
 		axes_scaling = @axes.clone
 		normal = axes_scaling.max_by{|axis|axis.dot(vec).abs}
 		axes_scaling.delete(normal)
@@ -332,7 +334,7 @@ class RotatedBoundingBox
 		while axis_pairs.length<3 and not dot_product_sorting.empty? do
 			axis_pairs << dot_product_sorting.pop[1..2]
 			dot_product_sorting.reject!{|rec|
-				rec[1]==axis_pairs.first[0] or rec[2]==axis_pairs.first[1]
+				rec[1]==axis_pairs.last[0] or rec[2]==axis_pairs.last[1]
 			}
 		end
 		axis_pairs.map!{|i,j|[axes_self[i],axes_give[j]]}
