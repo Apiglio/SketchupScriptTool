@@ -96,6 +96,12 @@ class RotatedBoundingBox
 		self
 	end
 	
+	def create_by_rbound(rbb)
+		@origin  = rbb.origin.clone
+		@axes    = rbb.axes.map(&:clone)
+		@lengths = rbb.lengths.map(&:clone)
+	end
+	
 	def initialize(entity_of_array)
 		clear
 		case entity_of_array
@@ -104,6 +110,7 @@ class RotatedBoundingBox
 			when Sketchup::Face then create_by_face(entity_of_array)
 			when Sketchup::ComponentInstance, Sketchup::Group then create_by_group(entity_of_array)
 			when Array then create_by_entities(entity_of_array)
+			when RotatedBoundingBox then create_by_rbound(entity_of_array)
 			else nil
 		end
 	end
@@ -212,10 +219,15 @@ class RotatedBoundingBox
 		self
 	end
 	
-	def add_rbound(rbound)
-		8.times{|i|self.add_point(rbound.corner(i))}
+	def add_rbound!(rbb)
+		8.times{|i|self.add_point(rbb.corner(i))}
 		self
 	end
+	
+	def add_rbound(rbb)
+		RotatedBoundingBox.new(self).add_rbound!(rbb)
+	end
+	alias :+ :add_rbound
 	
 	def make_box
 		return nil if empty?
